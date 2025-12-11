@@ -85,11 +85,11 @@ class Visualizer:
             import pygame
             pygame.init()
 
-            # Position at bottom center
+            # Position at top right
             info = pygame.display.Info()
             screen_w, screen_h = info.current_w, info.current_h
-            pos_x = (screen_w - SIZE) // 2
-            pos_y = screen_h - SIZE - 50
+            pos_x = screen_w - SIZE - 20
+            pos_y = 20
             os.environ['SDL_VIDEO_WINDOW_POS'] = f'{pos_x},{pos_y}'
 
             screen = pygame.display.set_mode((SIZE, SIZE), pygame.NOFRAME)

@@ -48,3 +48,4 @@ temp/
 *.wav
 *.mp3
 .serena
+.venv
