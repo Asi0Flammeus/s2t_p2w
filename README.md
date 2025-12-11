@@ -1,251 +1,270 @@
 # Push-to-Write (P2W) 🎤
 
-A fast, **online-first** voice-to-text application for Linux that transcribes your speech directly at the cursor position. Simply press `Alt+T`, speak, and watch your words appear instantly!
+A fast voice-to-text application for Linux that transcribes your speech directly at the cursor position. Press `Alt+T` to start recording, press again to stop and transcribe!
 
 ## ✨ Features
 
-- **🚀 Online API Mode**: Fast, accurate transcription using OpenAI Whisper API (primary method)
-- **🔌 Offline Fallback**: Works offline using faster-whisper when API unavailable
-- **⚡ Real-time Streaming**: Text appears as you speak (~1-2 second transcription per chunk)
-- **🌍 Multilingual**: Supports English and French with auto-detection
+- **🚀 ElevenLabs STT**: Fast, accurate transcription using ElevenLabs Speech-to-Text API
 - **🎯 System-wide**: Works in any application where you can type
-- **🔧 Configurable**: Customize hotkeys, language, API key, and audio settings
-- **💻 System Tray**: Convenient system tray integration with quick settings
-- **🔔 Notifications**: Visual feedback for recording status
-- **🔄 Smart Fallback**: Automatically switches to local model if API fails
+- **🔊 Audio Visualizer**: Elegant circular waveform display while recording
+- **🌍 Multilingual**: Supports auto language detection and manual language selection
+- **🔔 Notifications**: Desktop notifications for recording status
+- **🔧 Configurable**: Customize hotkeys, language, and microphone settings
+- **⚡ Toggle Recording**: Press hotkey to start, press again to stop
+- **🎨 Visual Feedback**: Animated donut visualizer shows audio levels in real-time
 
 ## 📋 Requirements
 
-- Ubuntu/Debian-based Linux distribution
-- Python 3.8 or higher
+- Python 3.10 or higher
+- Ubuntu/Debian or Arch Linux
 - PulseAudio or ALSA audio system
-- X11 window system (for keyboard/mouse automation)
+- X11 window system (for keyboard automation and visualizer)
+- ElevenLabs API key ([get one here](https://elevenlabs.io/app/settings/api-keys))
 
 ## 🚀 Installation
 
-### Quick Install
+### Quick Install (Local)
 
 ```bash
+# Clone the repository
 git clone https://github.com/yourusername/push-to-write.git
 cd push-to-write
-chmod +x install.sh
-./install.sh
+
+# Run the install script
+chmod +x scripts/install.sh
+./scripts/install.sh
+
+# Add your API key
+nano .env
+# Set: ELEVENLABS_API_KEY=your_key_here
+
+# Start the service
+systemctl --user start p2w
 ```
 
-The installer will:
-
-1. Install system dependencies (portaudio, ffmpeg, etc.)
-2. Create a Python virtual environment
-3. Install Python packages including Whisper
-4. Download the offline speech model
-5. Create desktop and command-line launchers
-
-### Manual Installation
+### System-wide Install (with sudo)
 
 ```bash
-# Install system dependencies
-sudo apt-get update
-sudo apt-get install -y python3-pip python3-venv python3-dev \
-    portaudio19-dev python3-pyaudio ffmpeg libportaudio2 \
-    libasound2-dev xclip xdotool python3-tk
+# Install system-wide to /opt/p2w
+sudo ./install.sh install
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+# Edit configuration
+sudo nano /opt/p2w/.env
 
-# Install Python packages
-pip install -r requirements.txt
+# Run manually
+p2w
 
-# Copy configuration
-cp .env.example .env
+# Or enable as systemd service
+systemctl --user enable p2w
+systemctl --user start p2w
+```
 
-# Run the application
-python src/main.py
+### System Dependencies
+
+**Debian/Ubuntu:**
+```bash
+sudo apt install python3-venv python3-dev portaudio19-dev xdotool libnotify-bin
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S python portaudio xdotool libnotify
 ```
 
 ## 🎮 Usage
 
 ### Starting the Application
 
-**Option 1: Command Line**
+**Option 1: As a Service (recommended)**
+```bash
+systemctl --user start p2w
+```
 
+**Option 2: Command Line**
 ```bash
 p2w
 ```
 
-**Option 2: Desktop**
-Search for "Push-to-Write" in your applications menu
-
 **Option 3: Direct**
-
 ```bash
 cd /path/to/push-to-write
-./venv/bin/python src/main.py
+source .venv/bin/activate
+python src/main.py
 ```
 
-### Using Push-to-Write
+### Recording Workflow
 
 1. Start the application
-2. Press `Alt+T` (default hotkey) to start recording
+2. Press `Alt+T` to **start recording** (visualizer appears)
 3. Speak clearly into your microphone
-4. **Two ways to stop:**
-   - Pause for 1.5 seconds (silence auto-stops)
-   - Press `Alt+T` again to manually stop
-5. Text appears at your cursor position!
+4. Press `Alt+T` again to **stop recording**
+5. Wait briefly for transcription
+6. Text appears at your cursor position!
 
-### System Tray Menu
-
-Right-click the system tray icon to:
-
-- Change language:
-  - 🌍 Auto-detect (English/French) - Automatically detects which language you're speaking
-  - 🇬🇧 English - Force English transcription
-  - 🇫🇷 French - Force French transcription
-- View current hotkey
-- Quit application
+| Action | Result |
+|--------|--------|
+| Press `Alt+T` | Start recording (visualizer shows) |
+| Press `Alt+T` again | Stop recording, transcribe, insert text |
+| `Ctrl+C` | Quit the application |
 
 ## ⚙️ Configuration
-
-### Quick Start: Get Your API Key
-
-1. Sign up at [OpenAI Platform](https://platform.openai.com/)
-2. Go to [API Keys](https://platform.openai.com/api-keys)
-3. Create a new API key
-4. Add it to your `.env` file
-
-### Configuration File
 
 Edit the `.env` file to customize:
 
 ```bash
-# Language settings
-DEFAULT_LANGUAGE=auto  # Options: auto (detect), en (English), fr (French)
+# ElevenLabs API (required)
+ELEVENLABS_API_KEY=your_elevenlabs_key_here
 
-# OpenAI API (Primary - Fast and Accurate)
-OPENAI_API_KEY=your_openai_api_key_here  # Required for online mode
-
-# Local Whisper (Fallback if API unavailable)
-WHISPER_MODEL=large    # Options: tiny, base, small, medium, large (used only as fallback)
-
-# Streaming transcription (text appears as you speak)
-STREAMING_MODE=true    # true = real-time, false = batch mode
-CHUNK_DURATION=3.0     # Transcribe every 3 seconds (fast with online API)
+# ElevenLabs STT model
+ELEVENLABS_MODEL=scribe_v1
 
 # Keyboard shortcut
-HOTKEY_MODIFIER=alt    # Options: alt, ctrl, shift
-HOTKEY_KEY=t
+HOTKEY_MODIFIER=alt    # Options: alt, ctrl
+HOTKEY_KEY=t           # Any key
 
-# Audio settings
-AUDIO_TIMEOUT=30       # Maximum recording time in seconds
-SILENCE_DURATION=1.5   # Seconds of silence to stop recording
-SILENCE_THRESHOLD=300  # Lower = more sensitive to silence
+# Language: auto, en, fr, de, es, etc. (ISO-639-1 codes)
+# Set to "auto" for automatic language detection
+LANGUAGE=auto
 
-# UI settings
-SHOW_TRAY_ICON=false   # Set to false if tray icon causes issues
-SHOW_NOTIFICATIONS=true
+# Microphone: auto or device index number
+# Run with DEBUG=true to see available devices
+MIC_DEVICE=auto
+
+# Local fallback model (only used if no API key)
+WHISPER_MODEL=base
+USE_CUDA=false
+
+# Debug output
+DEBUG=false
 ```
 
-**Note**: Without an API key, the app will automatically use the local Whisper model (slower but works offline).
+### Getting Your API Key
 
-### Whisper Model Sizes
-
-| Model  | Size    | Speed       | Quality   | Recommended For        |
-| ------ | ------- | ----------- | --------- | ---------------------- |
-| tiny   | 39 MB   | Ultra-fast  | Basic     | Quick drafts           |
-| base   | 74 MB   | Very fast   | Good      | Casual use             |
-| small  | 244 MB  | Fast        | Very Good | Fast transcription     |
-| medium | 769 MB  | Good        | Excellent | High quality           |
-| large  | 1550 MB | Medium      | **Best**  | **Default - Maximum accuracy** |
-
-**Note**: With `faster-whisper`, even the "large" model runs reasonably fast!
-
-## 🔧 Troubleshooting
-
-### ALSA/JACK Warnings on Startup
-
-**Symptom**: Console shows ALSA/JACK errors like "unable to open slave", "jack server is not running"
-
-**Solution**: These warnings are harmless! The program works correctly. They appear because PyAudio scans multiple audio backends before finding one that works. The latest version suppresses these warnings automatically.
-
-If you still see them, ensure you have the latest code:
-```bash
-git pull origin main
-```
-
-### Desktop Notifications Not Working
-
-**Symptom**: Warning about `python-dbus` package or notification service
-
-**Solution**: Install the DBus package for Python (optional):
-```bash
-sudo apt-get install python3-dbus
-```
-
-Or the program will automatically fall back to `notify-send` command (usually pre-installed).
-
-### No Audio Input Detected
-
-```bash
-# Check audio devices
-pactl list sources
-
-# Test microphone
-arecord -d 5 test.wav && aplay test.wav
-```
-
-### Permission Errors
-
-```bash
-# Add user to audio group
-sudo usermod -a -G audio $USER
-# Log out and back in
-```
-
-### Whisper Model Download Issues
-
-```bash
-# Manually download model
-python3 -c "import whisper; whisper.load_model('base')"
-```
-
-### System Tray Icon Errors
-
-**Symptom**: Errors about pystray, _xorg, or "Failed to dock icon"
-
-**Solution**: Disable the system tray icon (the app works fine without it):
-```bash
-export SHOW_TRAY_ICON=false
-p2w
-```
-
-Or edit `.env`:
-```bash
-SHOW_TRAY_ICON=false
-```
-
-The app will work perfectly without the tray icon. You can still change settings via environment variables.
-
-### Keyboard Shortcuts Not Working
-
-- Ensure you're running X11 (not Wayland)
-- Check if another application is using the same hotkey
-- Try running with sudo (for testing only)
+1. Sign up at [ElevenLabs](https://elevenlabs.io/)
+2. Go to [API Settings](https://elevenlabs.io/app/settings/api-keys)
+3. Create a new API key
+4. Add it to your `.env` file
 
 ## 🏗️ Project Structure
 
 ```
 push-to-write/
 ├── src/
-│   ├── main.py                 # Main application
-│   ├── config.py               # Configuration management
-│   ├── speech_recognition_engine.py  # Whisper integration
-│   ├── keyboard_handler.py    # Hotkey and text insertion
-│   └── ui_feedback.py         # System tray and notifications
-├── models/                     # Whisper model cache
-├── .env                        # User configuration
-├── requirements.txt            # Python dependencies
-├── install.sh                  # Installation script
-└── README.md                   # Documentation
+│   ├── main.py                      # Main application entry point
+│   ├── config.py                    # Configuration management
+│   ├── speech_recognition_engine.py # ElevenLabs STT integration
+│   ├── keyboard_handler.py          # Hotkey detection and text insertion
+│   ├── visualizer.py                # Circular audio visualizer (pygame)
+│   └── ui_feedback.py               # Desktop notifications
+├── scripts/
+│   ├── install.sh                   # Local installation script
+│   └── p2w.service                  # Systemd service template
+├── assets/
+│   └── icon.png                     # Application icon
+├── .env.example                     # Configuration template
+├── requirements.txt                 # Python dependencies
+├── install.sh                       # System-wide installer
+├── SETUP.md                         # Detailed setup guide
+└── README.md                        # This file
+```
+
+## 📦 Dependencies
+
+Core dependencies (from `requirements.txt`):
+
+| Package | Purpose |
+|---------|---------|
+| `elevenlabs` | Speech-to-text API client |
+| `pyaudio` | Audio capture |
+| `pynput` | Keyboard hotkey detection |
+| `pygame` | Audio visualizer |
+| `python-dotenv` | Environment configuration |
+| `numpy` | Audio processing |
+
+## 🔧 Service Management
+
+```bash
+# Start the service
+systemctl --user start p2w
+
+# Stop the service
+systemctl --user stop p2w
+
+# Enable auto-start on login
+systemctl --user enable p2w
+
+# Disable auto-start
+systemctl --user disable p2w
+
+# View status
+systemctl --user status p2w
+
+# View logs
+journalctl --user -u p2w -f
+```
+
+## 🔧 Troubleshooting
+
+### No Microphone Detected
+
+```bash
+# List available audio devices
+arecord -l
+
+# Or check with PulseAudio
+pactl list sources short
+
+# Set specific device in .env
+MIC_DEVICE=1
+```
+
+### Visualizer Not Showing
+
+- Ensure X11 is running (not Wayland): `echo $XDG_SESSION_TYPE`
+- Check pygame installation: `.venv/bin/pip show pygame`
+- Try running with `DEBUG=true` for more info
+
+### Keyboard Shortcuts Not Working
+
+- Ensure you're running X11 (not Wayland)
+- Check if another application uses `Alt+T`
+- Try a different hotkey in `.env`
+
+### Permission Denied for Input
+
+```bash
+# Add user to input group
+sudo usermod -aG input $USER
+# Log out and back in
+```
+
+### Service Won't Start
+
+```bash
+# Check logs
+journalctl --user -u p2w -n 50
+
+# Verify display is set
+echo $DISPLAY  # Should be :0 or :1
+```
+
+### ALSA/JACK Warnings
+
+These are harmless! PyAudio scans multiple backends. The warnings are suppressed automatically.
+
+## 🗑️ Uninstall
+
+**Local installation:**
+```bash
+systemctl --user stop p2w
+systemctl --user disable p2w
+rm ~/.config/systemd/user/p2w.service
+systemctl --user daemon-reload
+```
+
+**System-wide installation:**
+```bash
+sudo ./install.sh uninstall
 ```
 
 ## 🤝 Contributing
@@ -258,74 +277,15 @@ MIT License - feel free to use this project however you'd like!
 
 ## 🙏 Acknowledgments
 
-- [OpenAI Whisper](https://github.com/openai/whisper) for offline speech recognition
+- [ElevenLabs](https://elevenlabs.io/) for the speech-to-text API
 - [pynput](https://github.com/moses-palmer/pynput) for keyboard handling
-- [pyaudio](https://people.csail.mit.edu/hubert/pyaudio/) for audio capture
+- [PyAudio](https://people.csail.mit.edu/hubert/pyaudio/) for audio capture
+- [Pygame](https://www.pygame.org/) for the visualizer
 
 ## 💡 Tips
 
-- **Streaming mode** (default): Text appears as you speak - great for real-time writing
-- **Batch mode** (`STREAMING_MODE=false`): Transcribe all at once after you finish - better for short commands
-- The `large` model offers maximum quality (default)
-- For maximum speed, use `tiny` model and `CHUNK_DURATION=1.5`
-- For maximum accuracy, use `medium` or `large` model
-- The first run will download the Whisper model (one-time download)
+- Speak clearly and at a normal pace for best results
+- The visualizer shows when audio is being captured
 - Works best in quiet environments
-- Speak clearly and at a normal pace
-- With streaming, text appears as you speak (every 5 seconds by default)
-- Press the hotkey again to manually stop recording
-
-## ⚙️ Performance Tuning
-
-### With OpenAI API (Recommended - Default)
-
-**Default settings (fast and accurate):**
-```bash
-OPENAI_API_KEY=your_key_here
-CHUNK_DURATION=3.0
-```
-
-The API uses **OpenAI Whisper** (`whisper-1`) for quality and speed:
-- **Speed**: ~2-3 seconds per chunk (much faster than local)
-- **Quality**: High accuracy with smart prompting
-- **Reduced hallucinations**: Built-in filtering and validation
-- **Auto language detection**: Seamlessly handles English/French
-- **No local GPU needed**: Works on any hardware
-
-### Without API (Local Mode)
-
-If you don't have an API key, the app uses local models:
-
-**Maximum Quality (slower):**
-```bash
-WHISPER_MODEL=large
-CHUNK_DURATION=5.0
-```
-
-**High Quality (faster):**
-```bash
-WHISPER_MODEL=medium
-CHUNK_DURATION=4.0
-```
-
-**Fast Mode (good quality):**
-```bash
-WHISPER_MODEL=small
-CHUNK_DURATION=3.0
-```
-
-**Quick Drafts (fastest local):**
-```bash
-WHISPER_MODEL=base
-CHUNK_DURATION=2.5
-```
-
-**Important**: Chunk duration should match model size. Too short chunks with large models cause garbled output and hallucinations.
-
-### Other Settings
-
-**Disable streaming (batch mode):**
-```bash
-STREAMING_MODE=false
-```
-
+- The first transcription may be slightly slower (API warmup)
+- Keep recordings under 30 seconds for faster processing

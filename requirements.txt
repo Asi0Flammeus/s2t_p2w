@@ -1,14 +1,22 @@
-# Push-to-Write minimal dependencies
+# Push-to-Write dependencies
+
+# Audio capture
 pyaudio==0.2.14
+
+# Keyboard handling
 pynput==1.7.7
+
+# Configuration
 python-dotenv==1.0.1
+
+# Audio processing
 numpy>=1.24.0
 
-# ElevenLabs speech-to-text
+# ElevenLabs speech-to-text API
 elevenlabs>=1.0.0
-
-# Local fallback (optional)
-faster-whisper==1.0.3
 
 # Audio visualizer
 pygame>=2.5.0
+
+# Local fallback (optional - only used if no API key)
+# faster-whisper==1.0.3

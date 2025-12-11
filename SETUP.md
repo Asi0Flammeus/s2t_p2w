@@ -1,6 +1,6 @@
 # Push-to-Write Setup Guide
 
-Voice transcription tool using ElevenLabs STT. Hold a hotkey to record, release to transcribe and type.
+Voice transcription tool using ElevenLabs STT. Press hotkey to start recording, press again to stop and transcribe.
 
 ## Quick Install
 
@@ -30,13 +30,13 @@ systemctl --user start p2w
 ### System Dependencies (Debian/Ubuntu)
 
 ```bash
-sudo apt install python3-venv python3-dev portaudio19-dev
+sudo apt install python3-venv python3-dev portaudio19-dev xdotool libnotify-bin
 ```
 
 ### System Dependencies (Arch)
 
 ```bash
-sudo pacman -S python portaudio
+sudo pacman -S python portaudio xdotool libnotify
 ```
 
 ## Configuration
@@ -49,7 +49,7 @@ ELEVENLABS_API_KEY=your_key_here
 
 # Optional
 ELEVENLABS_MODEL=scribe_v1      # STT model
-HOTKEY_MODIFIER=alt             # alt, ctrl, shift
+HOTKEY_MODIFIER=alt             # alt, ctrl
 HOTKEY_KEY=t                    # any key
 LANGUAGE=auto                   # auto, en, fr, de, etc.
 MIC_DEVICE=auto                 # auto or device index
@@ -60,9 +60,9 @@ DEBUG=false                     # show debug output
 
 | Action | Result |
 |--------|--------|
-| Hold `Alt+T` | Start recording (visualizer appears) |
-| Release `Alt+T` | Stop recording, transcribe, type text |
-| `Ctrl+C` | Stop the service |
+| Press `Alt+T` | Start recording (visualizer appears) |
+| Press `Alt+T` again | Stop recording, transcribe, type text |
+| `Ctrl+C` | Stop the application |
 
 ## Service Management
 
