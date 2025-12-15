@@ -26,10 +26,30 @@ check_root() {
     fi
 }
 
+spinner() {
+    local pid=$1
+    local msg=$2
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r${YELLOW}${spin:$i:1} ${msg}...${NC}"
+        i=$(( (i + 1) % 10 ))
+        sleep 0.1
+    done
+    wait "$pid"
+    local exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        printf "\r${GREEN}✓ ${msg}${NC}    \n"
+    else
+        printf "\r${RED}✗ ${msg} failed${NC}    \n"
+        exit $exit_code
+    fi
+}
+
 install_deps() {
     echo -e "${YELLOW}Installing system dependencies...${NC}"
-    apt-get update -qq
-    apt-get install -y -qq \
+    apt-get update
+    apt-get install -y  \
         python3-pip python3-venv python3-dev \
         portaudio19-dev libportaudio2 \
         xdotool libnotify-bin
@@ -54,8 +74,12 @@ install_p2w() {
 
     # Create venv and install packages
     python3 -m venv "$INSTALL_DIR/venv"
-    "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip
-    "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt"
+
+    "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip > /dev/null 2>&1 &
+    spinner $! "Upgrading pip"
+
+    "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt" > /dev/null 2>&1 &
+    spinner $! "Installing Python packages"
 
     # Create config if not exists
     if [ ! -f "$INSTALL_DIR/.env" ]; then
@@ -119,7 +143,8 @@ update_p2w() {
     cp requirements.txt "$INSTALL_DIR/"
 
     # Update packages
-    "$INSTALL_DIR/venv/bin/pip" install -q --upgrade -r "$INSTALL_DIR/requirements.txt"
+    "$INSTALL_DIR/venv/bin/pip" install -q --upgrade -r "$INSTALL_DIR/requirements.txt" > /dev/null 2>&1 &
+    spinner $! "Updating Python packages"
 
     # Restore config
     cp /tmp/p2w.env.bak "$INSTALL_DIR/.env" 2>/dev/null || true
