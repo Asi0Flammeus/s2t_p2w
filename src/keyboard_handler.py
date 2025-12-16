@@ -6,6 +6,9 @@ from pynput.keyboard import Key, Controller as KeyboardController
 from config import config
 from platform_utils import IS_WINDOWS, IS_LINUX, IS_MACOS
 
+# Clipboard insertion mode - much faster and avoids React Error #185
+USE_CLIPBOARD = True
+
 
 class KeyboardHandler:
     """Handle hotkey toggle and text insertion"""
@@ -85,15 +88,26 @@ class KeyboardHandler:
         if not text:
             return
 
-        if IS_LINUX:
-            self._insert_text_linux(text)
-        elif IS_WINDOWS:
-            self._insert_text_windows(text)
-        elif IS_MACOS:
-            self._insert_text_macos(text)
+        # Use clipboard-based insertion to avoid React Error #185
+        if USE_CLIPBOARD:
+            if IS_LINUX:
+                self._insert_clipboard_linux(text)
+            elif IS_WINDOWS:
+                self._insert_clipboard_windows(text)
+            elif IS_MACOS:
+                self._insert_clipboard_macos(text)
+            else:
+                self._insert_text_pynput(text)
         else:
-            # Fallback: use pynput (slower but universal)
-            self._insert_text_pynput(text)
+            # Legacy keystroke-based insertion
+            if IS_LINUX:
+                self._insert_text_linux(text)
+            elif IS_WINDOWS:
+                self._insert_text_windows(text)
+            elif IS_MACOS:
+                self._insert_text_macos(text)
+            else:
+                self._insert_text_pynput(text)
 
     def _insert_text_linux(self, text: str):
         """Insert text on Linux using xdotool with keystroke delay"""
@@ -137,3 +151,126 @@ class KeyboardHandler:
                 time.sleep(0.005)  # Small delay for reliability
         except Exception as e:
             print(f"⚠ Text insertion error: {e}")
+
+    def _insert_clipboard_linux(self, text: str):
+        """Insert text on Linux via clipboard (avoids React Error #185)"""
+        try:
+            # Save current clipboard content
+            old_clipboard = None
+            try:
+                result = subprocess.run(['xclip', '-selection', 'clipboard', '-o'],
+                                        capture_output=True, timeout=2)
+                if result.returncode == 0:
+                    old_clipboard = result.stdout
+            except Exception:
+                pass
+
+            # Copy text to clipboard
+            subprocess.run(['xclip', '-selection', 'clipboard'],
+                           input=text.encode('utf-8'), timeout=2)
+
+            # Small delay for clipboard to settle
+            time.sleep(0.05)
+
+            # Paste with Ctrl+V
+            self._keyboard_controller.press(Key.ctrl)
+            self._keyboard_controller.press('v')
+            self._keyboard_controller.release('v')
+            self._keyboard_controller.release(Key.ctrl)
+
+            # Wait for paste to complete
+            time.sleep(0.1)
+
+            # Restore original clipboard content
+            if old_clipboard is not None:
+                try:
+                    subprocess.run(['xclip', '-selection', 'clipboard'],
+                                   input=old_clipboard, timeout=2)
+                except Exception:
+                    pass
+
+        except FileNotFoundError:
+            print("⚠ xclip not found, falling back to xdotool")
+            self._insert_text_linux(text)
+        except Exception as e:
+            print(f"⚠ Clipboard error: {e}, falling back to xdotool")
+            self._insert_text_linux(text)
+
+    def _insert_clipboard_windows(self, text: str):
+        """Insert text on Windows via clipboard (avoids React Error #185)"""
+        try:
+            import pyperclip
+
+            # Save current clipboard
+            old_clipboard = None
+            try:
+                old_clipboard = pyperclip.paste()
+            except Exception:
+                pass
+
+            # Copy text to clipboard
+            pyperclip.copy(text)
+
+            # Small delay for clipboard to settle
+            time.sleep(0.05)
+
+            # Paste with Ctrl+V
+            self._keyboard_controller.press(Key.ctrl)
+            self._keyboard_controller.press('v')
+            self._keyboard_controller.release('v')
+            self._keyboard_controller.release(Key.ctrl)
+
+            # Wait for paste to complete
+            time.sleep(0.1)
+
+            # Restore original clipboard
+            if old_clipboard is not None:
+                try:
+                    pyperclip.copy(old_clipboard)
+                except Exception:
+                    pass
+
+        except ImportError:
+            print("⚠ pyperclip not found, falling back to keystroke method")
+            self._insert_text_windows(text)
+        except Exception as e:
+            print(f"⚠ Clipboard error: {e}, falling back to keystroke method")
+            self._insert_text_windows(text)
+
+    def _insert_clipboard_macos(self, text: str):
+        """Insert text on macOS via clipboard (avoids React Error #185)"""
+        try:
+            # Save current clipboard
+            old_clipboard = None
+            try:
+                result = subprocess.run(['pbpaste'], capture_output=True, timeout=2)
+                if result.returncode == 0:
+                    old_clipboard = result.stdout
+            except Exception:
+                pass
+
+            # Copy text to clipboard using pbcopy
+            subprocess.run(['pbcopy'], input=text.encode('utf-8'), timeout=2)
+
+            # Small delay for clipboard to settle
+            time.sleep(0.05)
+
+            # Paste with Cmd+V
+            self._keyboard_controller.press(Key.cmd)
+            self._keyboard_controller.press('v')
+            self._keyboard_controller.release('v')
+            self._keyboard_controller.release(Key.cmd)
+
+            # Wait for paste to complete
+            time.sleep(0.1)
+
+            # Restore original clipboard
+            if old_clipboard is not None:
+                try:
+                    subprocess.run(['pbcopy'], input=old_clipboard, timeout=2)
+                except Exception:
+                    pass
+
+        except Exception as e:
+            print(f"⚠ Clipboard error: {e}, falling back to keystroke method")
+            self._insert_text_macos(text)
