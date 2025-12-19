@@ -20,9 +20,9 @@ FLEXOKI_COLORS = {
 
 # Animation position options
 POSITION_PRESETS = {
-    "top-right": lambda w, h, size: (w - size - 20, 20),
-    "top-left": lambda w, h, size: (20, 20),
-    "top-center": lambda w, h, size: ((w - size) // 2, 20),
+    "top-right": lambda w, h, size: (w - size - 10, 0),
+    "top-left": lambda w, h, size: (20, 10),
+    "top-center": lambda w, h, size: ((w - size) // 2, 10),
     "bottom-right": lambda w, h, size: (w - size - 20, h - size - 60),
     "bottom-left": lambda w, h, size: (20, h - size - 60),
     "bottom-center": lambda w, h, size: ((w - size) // 2, h - size - 60),
@@ -56,6 +56,12 @@ class Config:
 
     # Animation position (top-right, top-left, bottom-right, bottom-left, center)
     ANIMATION_POSITION = os.getenv("ANIMATION_POSITION", "top-right").lower()
+
+    # Visualizer style (minimalistic, classic, legacy, toric, terminal)
+    VISUALIZER_STYLE = os.getenv("VISUALIZER_STYLE", "toric").lower()
+
+    # Visualizer backend (vispy, pygame)
+    VISUALIZER_BACKEND = os.getenv("VISUALIZER_BACKEND", "pygame").lower()
 
     # Audio settings
     SAMPLE_RATE = 16000

@@ -79,7 +79,8 @@ class Visualizer:
                 self.global_level = self.global_level * 0.7 + rms * 0.3
 
                 for i in range(WAVE_POINTS):
-                    freq_idx = int((i / WAVE_POINTS) * fft_size * 0.7)
+                    # Skip DC component (bin 0) which is always high
+                    freq_idx = 1 + int((i / WAVE_POINTS) * (fft_size - 1) * 0.7)
                     freq_idx = min(freq_idx, fft_size - 1)
                     level = fft_data[freq_idx] / 35000
                     level = min(1.0, level * 1.8)
@@ -104,14 +105,6 @@ class Visualizer:
 
             screen = pygame.display.set_mode((SIZE, SIZE), pygame.NOFRAME)
             pygame.display.set_caption("P2W")
-
-            # Try to set opacity (may not work on all platforms)
-            try:
-                from pygame._sdl2.video import Window
-                window = Window.from_display_module()
-                window.opacity = 0.92
-            except Exception:
-                pass
 
             clock = pygame.time.Clock()
             self._ready.set()
@@ -154,8 +147,11 @@ class Visualizer:
         outer_points = []
         inner_points = []
 
+        # Rotation offset: +π/2 to start from top (90° counter-clockwise)
+        angle_offset = math.pi / 2
+
         for i in range(WAVE_POINTS):
-            angle = (i / WAVE_POINTS) * 2 * math.pi
+            angle = (i / WAVE_POINTS) * 2 * math.pi + angle_offset
             level = self.smooth_levels[i]
 
             wave_phase = self.frame * 0.05
@@ -186,7 +182,7 @@ class Visualizer:
 
             glow_outer = []
             for i in range(WAVE_POINTS):
-                angle = (i / WAVE_POINTS) * 2 * math.pi
+                angle = (i / WAVE_POINTS) * 2 * math.pi + angle_offset
                 level = self.smooth_levels[i]
                 wave = math.sin(self.frame * 0.05 + angle * 3) * 0.15
                 amp = (level * max_amplitude * 0.9 + wave * max_amplitude * 0.3) * 1.2
@@ -216,7 +212,7 @@ class Visualizer:
         if len(inner_points) > 2:
             pygame.draw.polygon(screen, self.COLOR_DIM, inner_points, width=2)
 
-        # Cut out center (draw circle with background color)
+        # Cut out center
         pygame.draw.circle(screen, BG_COLOR, (center_x, center_y), inner_radius - 3)
 
         # Highlight
@@ -224,26 +220,6 @@ class Visualizer:
             highlight_surf = pygame.Surface((SIZE, SIZE), pygame.SRCALPHA)
             pygame.draw.polygon(highlight_surf, (*self.COLOR_GLOW, int(global_level * 180)), outer_points, width=1)
             screen.blit(highlight_surf, (0, 0))
-
-        # Draw circular mask to make window appear round
-        # Create mask surface
-        mask = pygame.Surface((SIZE, SIZE), pygame.SRCALPHA)
-        mask.fill((0, 0, 0, 255))
-        pygame.draw.circle(mask, (0, 0, 0, 0), (center_x, center_y), SIZE // 2 - 2)
-
-        # Apply mask - fill corners with very dark color
-        corner_color = (10, 10, 12)
-        # Top-left
-        pygame.draw.polygon(screen, corner_color, [(0, 0), (SIZE//2, 0), (0, SIZE//2)])
-        # Top-right
-        pygame.draw.polygon(screen, corner_color, [(SIZE, 0), (SIZE//2, 0), (SIZE, SIZE//2)])
-        # Bottom-left
-        pygame.draw.polygon(screen, corner_color, [(0, SIZE), (SIZE//2, SIZE), (0, SIZE//2)])
-        # Bottom-right
-        pygame.draw.polygon(screen, corner_color, [(SIZE, SIZE), (SIZE//2, SIZE), (SIZE, SIZE//2)])
-
-        # Draw outer circle to clean up
-        pygame.draw.circle(screen, corner_color, (center_x, center_y), SIZE // 2, SIZE // 2 - outer_radius - 12)
 
         pygame.display.flip()
 
