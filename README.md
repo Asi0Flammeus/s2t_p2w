@@ -214,10 +214,6 @@ LANGUAGE=auto
 # Run with DEBUG=true to see available devices
 MIC_DEVICE=auto
 
-# Local fallback model (only used if no API key)
-WHISPER_MODEL=base
-USE_CUDA=false
-
 # Debug output
 DEBUG=false
 ```

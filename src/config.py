@@ -43,10 +43,6 @@ class Config:
     # ElevenLabs STT model
     ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "scribe_v1")
 
-    # Local fallback model (only used if no API key)
-    WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
-    WHISPER_DEVICE = "cuda" if os.getenv("USE_CUDA", "false").lower() == "true" else "cpu"
-
     # Hotkey
     HOTKEY_MODIFIER = os.getenv("HOTKEY_MODIFIER", "alt")
     HOTKEY_KEY = os.getenv("HOTKEY_KEY", "g")
