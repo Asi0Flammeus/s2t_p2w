@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="Dicton Logo" width="400">
+</p>
+
 # Dicton
 
 A fast voice-to-text application that transcribes your speech directly at the cursor position. Press `Alt+T` to start recording, press again to stop and transcribe!
