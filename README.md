@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="logo.png" alt="Dicton Logo" width="400">
+  <img src="logo.png" alt="Dicton Logo" width="600">
 </p>
 
 <p align="center">
-  <a href="https://github.com/asi0flammern/dicton/actions/workflows/ci.yml"><img src="https://github.com/asi0flammern/dicton/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Asi0Flammeus/dicton/actions/workflows/ci.yml"><img src="https://github.com/Asi0Flammeus/dicton/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/dicton/"><img src="https://img.shields.io/pypi/v/dicton" alt="PyPI"></a>
   <a href="https://pypi.org/project/dicton/"><img src="https://img.shields.io/pypi/pyversions/dicton" alt="Python Version"></a>
-  <a href="https://github.com/asi0flammern/dicton/blob/main/LICENSE"><img src="https://img.shields.io/github/license/asi0flammern/dicton" alt="License"></a>
+  <a href="https://github.com/Asi0Flammeus/dicton/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Asi0Flammeus/dicton" alt="License"></a>
 </p>
 
 # Dicton
@@ -116,7 +116,7 @@ Or download a wheel from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
 **Quick Install (Local)**
 ```bash
 # Clone the repository
-git clone https://github.com/asi0flammern/dicton.git
+git clone https://github.com/Asi0Flammeus/dicton.git
 cd dicton
 
 # Run the install script
@@ -163,7 +163,7 @@ sudo pacman -S python portaudio xdotool libnotify
 
 ```bash
 # Clone the repository
-git clone https://github.com/asi0flammern/dicton.git
+git clone https://github.com/Asi0Flammeus/dicton.git
 cd dicton
 
 # Create virtual environment
