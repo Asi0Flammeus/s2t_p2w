@@ -2,9 +2,16 @@
   <img src="logo.png" alt="Dicton Logo" width="400">
 </p>
 
+<p align="center">
+  <a href="https://github.com/asi0flammern/dicton/actions/workflows/ci.yml"><img src="https://github.com/asi0flammern/dicton/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/dicton/"><img src="https://img.shields.io/pypi/v/dicton" alt="PyPI"></a>
+  <a href="https://pypi.org/project/dicton/"><img src="https://img.shields.io/pypi/pyversions/dicton" alt="Python Version"></a>
+  <a href="https://github.com/asi0flammern/dicton/blob/main/LICENSE"><img src="https://img.shields.io/github/license/asi0flammern/dicton" alt="License"></a>
+</p>
+
 # Dicton
 
-A fast voice-to-text application that transcribes your speech directly at the cursor position. Press `Alt+T` to start recording, press again to stop and transcribe!
+A fast voice-to-text application that transcribes your speech directly at the cursor position. Press `Alt+G` to start recording, press again to stop and transcribe!
 
 **Supported Platforms:** Linux (X11), Windows, macOS
 
@@ -40,6 +47,26 @@ A fast voice-to-text application that transcribes your speech directly at the cu
 - Microphone access permissions
 
 ## Installation
+
+### Quick Install (pip)
+
+```bash
+# Install from PyPI
+pip install dicton
+
+# Or install with all optional features
+pip install dicton[all]
+```
+
+After installing, create a `.env` file with your ElevenLabs API key:
+```bash
+echo "ELEVENLABS_API_KEY=your_key_here" > .env
+```
+
+Then run:
+```bash
+dicton
+```
 
 ### Windows
 
@@ -89,7 +116,7 @@ Or download a wheel from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
 **Quick Install (Local)**
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dicton.git
+git clone https://github.com/asi0flammern/dicton.git
 cd dicton
 
 # Run the install script
@@ -136,19 +163,18 @@ sudo pacman -S python portaudio xdotool libnotify
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dicton.git
+git clone https://github.com/asi0flammern/dicton.git
 cd dicton
 
 # Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
-
-# If PyAudio fails, install portaudio first:
+# Install portaudio first (required for pyaudio)
 brew install portaudio
-pip install pyaudio
+
+# Install the package
+pip install -e .
 
 # Configure
 cp .env.example .env
@@ -156,7 +182,7 @@ nano .env
 # Add your ELEVENLABS_API_KEY
 
 # Run
-python src/main.py
+dicton
 ```
 
 ## Usage
@@ -177,22 +203,22 @@ systemctl --user start dicton
 ```bash
 cd /path/to/dicton
 source venv/bin/activate  # or: venv\Scripts\activate on Windows
-python src/main.py
+dicton
 ```
 
 ### Recording Workflow
 
 1. Start the application
-2. Press `Alt+T` to **start recording** (visualizer appears)
+2. Press `Alt+G` to **start recording** (visualizer appears)
 3. Speak clearly into your microphone
-4. Press `Alt+T` again to **stop recording**
+4. Press `Alt+G` again to **stop recording**
 5. Wait briefly for transcription
 6. Text appears at your cursor position!
 
 | Action | Result |
 |--------|--------|
-| Press `Alt+T` | Start recording (visualizer shows) |
-| Press `Alt+T` again | Stop recording, transcribe, insert text |
+| Press `Alt+G` | Start recording (visualizer shows) |
+| Press `Alt+G` again | Stop recording, transcribe, insert text |
 | `Ctrl+C` | Quit the application |
 
 ## Configuration
@@ -208,7 +234,7 @@ ELEVENLABS_MODEL=scribe_v1
 
 # Keyboard shortcut
 HOTKEY_MODIFIER=alt    # Options: alt, ctrl
-HOTKEY_KEY=t           # Any key
+HOTKEY_KEY=g           # Any key
 
 # Language: auto, en, fr, de, es, etc. (ISO-639-1 codes)
 # Set to "auto" for automatic language detection
@@ -233,7 +259,9 @@ DEBUG=false
 
 ```
 dicton/
-├── src/
+├── src/dicton/                      # Main package
+│   ├── __init__.py                  # Package exports
+│   ├── __main__.py                  # python -m dicton entry
 │   ├── main.py                      # Main application entry point
 │   ├── config.py                    # Configuration management
 │   ├── platform_utils.py            # Cross-platform detection
@@ -241,25 +269,23 @@ dicton/
 │   ├── keyboard_handler.py          # Hotkey detection and text insertion
 │   ├── visualizer.py                # Circular audio visualizer (pygame)
 │   └── ui_feedback.py               # Desktop notifications
-├── scripts/
-│   ├── install.sh                   # Linux installation script
-│   ├── install.ps1                  # Windows PowerShell installer
-│   └── dicton.service               # Systemd service template
-├── assets/
-│   └── icon.png                     # Application icon
+├── tests/                           # Test suite
+│   ├── test_config.py               # Config tests
+│   ├── test_platform.py             # Platform detection tests
+│   └── test_hotkey.py               # Hotkey parsing tests
+├── scripts/                         # Platform installers
+├── .github/workflows/               # CI/CD pipelines
+├── pyproject.toml                   # Package configuration
 ├── .env.example                     # Configuration template
-├── requirements.txt                 # Python dependencies
-├── install.sh                       # Linux system-wide installer
-├── install.bat                      # Windows batch installer
-├── run.bat                          # Windows launcher
-├── run.sh                           # Linux launcher
-├── SETUP.md                         # Detailed setup guide
+├── install.sh                       # Linux installer
+├── install.bat                      # Windows installer
+├── run.sh / run.bat                 # Platform launchers
 └── README.md                        # This file
 ```
 
 ## Dependencies
 
-Core dependencies (from `requirements.txt`):
+Core dependencies (from `pyproject.toml`):
 
 | Package | Purpose |
 |---------|---------|
@@ -396,7 +422,7 @@ sudo ./install.sh uninstall
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit pull requests.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
