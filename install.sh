@@ -52,7 +52,8 @@ install_deps() {
     apt-get install -y  \
         python3-pip python3-venv python3-dev \
         portaudio19-dev libportaudio2 \
-        xdotool libnotify-bin
+        xdotool libnotify-bin \
+        libgtk-3-dev libcairo2-dev libgirepository1.0-dev gir1.2-gtk-3.0
     echo -e "${GREEN}✓ Dependencies installed${NC}"
 }
 
@@ -67,19 +68,20 @@ install_dicton() {
     # Create install directory
     mkdir -p "$INSTALL_DIR"
 
-    # Copy source files
+    # Copy project files
     cp -r src "$INSTALL_DIR/"
-    cp requirements.txt "$INSTALL_DIR/"
+    cp pyproject.toml "$INSTALL_DIR/"
     cp .env.example "$INSTALL_DIR/"
 
     # Create venv and install packages
     python3 -m venv "$INSTALL_DIR/venv"
 
-    "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip > /dev/null 2>&1 &
-    spinner $! "Upgrading pip"
+    echo -e "${YELLOW}Upgrading pip...${NC}"
+    "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
 
-    "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt" > /dev/null 2>&1 &
-    spinner $! "Installing Python packages"
+    echo -e "${YELLOW}Installing Python packages...${NC}"
+    "$INSTALL_DIR/venv/bin/pip" install "$INSTALL_DIR"
+    echo -e "${GREEN}✓ Python packages installed${NC}"
 
     # Create config if not exists
     if [ ! -f "$INSTALL_DIR/.env" ]; then
@@ -90,7 +92,7 @@ install_dicton() {
     cat > "$BIN_LINK" <<'EOF'
 #!/bin/bash
 cd /opt/dicton
-exec /opt/dicton/venv/bin/python src/main.py "$@"
+exec /opt/dicton/venv/bin/dicton "$@"
 EOF
     chmod +x "$BIN_LINK"
 
@@ -103,7 +105,8 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/opt/dicton/venv/bin/python /opt/dicton/src/main.py
+ExecStart=/opt/dicton/venv/bin/dicton
+WorkingDirectory=/opt/dicton
 Restart=on-failure
 RestartSec=5
 Environment=DISPLAY=:0
@@ -140,11 +143,12 @@ update_dicton() {
 
     # Update source files
     cp -r src "$INSTALL_DIR/"
-    cp requirements.txt "$INSTALL_DIR/"
+    cp pyproject.toml "$INSTALL_DIR/"
 
     # Update packages
-    "$INSTALL_DIR/venv/bin/pip" install -q --upgrade -r "$INSTALL_DIR/requirements.txt" > /dev/null 2>&1 &
-    spinner $! "Updating Python packages"
+    echo -e "${YELLOW}Updating Python packages...${NC}"
+    "$INSTALL_DIR/venv/bin/pip" install --upgrade "$INSTALL_DIR"
+    echo -e "${GREEN}✓ Python packages updated${NC}"
 
     # Restore config
     cp /tmp/dicton.env.bak "$INSTALL_DIR/.env" 2>/dev/null || true

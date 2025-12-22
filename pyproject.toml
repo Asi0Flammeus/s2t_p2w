@@ -45,6 +45,9 @@ vispy = [
     "vispy>=0.14.0",
     "pyglet>=2.0.0",
 ]
+gtk = [
+    "PyGObject>=3.42.0",
+]
 notifications = [
     "plyer>=2.1.0",
 ]
@@ -57,7 +60,7 @@ dev = [
     "ruff>=0.1.0",
 ]
 all = [
-    "dicton[vispy,notifications,windows,dev]",
+    "dicton[vispy,gtk,notifications,windows,dev]",
 ]
 
 [project.scripts]

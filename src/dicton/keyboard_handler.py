@@ -43,6 +43,13 @@ class KeyboardHandler:
             # Check hotkey and trigger once per press
             if self._is_hotkey_pressed() and not self.hotkey_active:
                 self.hotkey_active = True
+                # Release the hotkey character to prevent it from being typed
+                # This "cancels" the pending keypress before apps receive it
+                hotkey_char = config.HOTKEY_KEY.lower()
+                try:
+                    self._keyboard_controller.release(hotkey_char)
+                except Exception:
+                    pass
                 if self.on_toggle:
                     self.on_toggle()
         except Exception:
