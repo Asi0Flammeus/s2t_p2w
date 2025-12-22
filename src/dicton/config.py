@@ -111,6 +111,9 @@ class Config:
     # Language: "auto" (None), "en", "fr", etc. (ISO-639-1 or ISO-639-3)
     LANGUAGE = os.getenv("LANGUAGE", "auto")
 
+    # Filler word filtering: "true" to enable removal of filler words (um, uh, like, etc.)
+    FILTER_FILLERS = os.getenv("FILTER_FILLERS", "true").lower() == "true"
+
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
     @classmethod
