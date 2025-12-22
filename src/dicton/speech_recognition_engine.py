@@ -36,7 +36,13 @@ from .config import config
 from .text_processor import get_text_processor
 
 # Import visualizer based on configured backend
-if config.VISUALIZER_BACKEND == "vispy":
+if config.VISUALIZER_BACKEND == "gtk":
+    try:
+        from .visualizer_gtk import get_visualizer
+    except ImportError as e:
+        print(f"⚠ GTK not available ({e}), falling back to pygame")
+        from .visualizer import get_visualizer
+elif config.VISUALIZER_BACKEND == "vispy":
     try:
         from .visualizer_vispy import get_visualizer
     except ImportError:

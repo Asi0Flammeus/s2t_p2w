@@ -98,7 +98,10 @@ class Config:
     # Visualizer style (minimalistic, classic, legacy, toric, terminal)
     VISUALIZER_STYLE = os.getenv("VISUALIZER_STYLE", "toric").lower()
 
-    # Visualizer backend (vispy, pygame)
+    # Visualizer backend (pygame, vispy, gtk)
+    # - pygame: Default, works everywhere, window opacity on Linux
+    # - vispy: OpenGL-based, requires vispy + pyglet
+    # - gtk: GTK3/Cairo, true per-pixel transparency on Linux (requires PyGObject)
     VISUALIZER_BACKEND = os.getenv("VISUALIZER_BACKEND", "pygame").lower()
 
     # Visualizer window opacity for Linux (0.0-1.0, requires compositor)
