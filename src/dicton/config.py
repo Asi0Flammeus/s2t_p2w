@@ -5,7 +5,26 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+
+def _load_env_files():
+    """Load .env from multiple possible locations (first found wins)."""
+    locations = [
+        Path.cwd() / ".env",  # Current working directory
+        Path.home() / ".config" / "dicton" / ".env",  # User config dir
+        Path("/opt/dicton/.env"),  # System install
+    ]
+
+    for env_path in locations:
+        if env_path.exists():
+            load_dotenv(env_path)
+            return str(env_path)
+
+    # Fallback: let dotenv search normally
+    load_dotenv()
+    return None
+
+
+_loaded_env = _load_env_files()
 
 # Flexoki color palette - https://github.com/kepano/flexoki
 FLEXOKI_COLORS = {
@@ -76,9 +95,10 @@ POSITION_PRESETS = {
 class Config:
     """Configuration for Dicton"""
 
-    # Paths
-    BASE_DIR = Path(__file__).parent.parent
-    MODELS_DIR = BASE_DIR / "models"
+    # Paths - use user-writable directories
+    CONFIG_DIR = Path.home() / ".config" / "dicton"
+    DATA_DIR = Path.home() / ".local" / "share" / "dicton"
+    MODELS_DIR = DATA_DIR / "models"
 
     # ElevenLabs API
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
@@ -102,6 +122,8 @@ class Config:
     HOTKEY_HOLD_THRESHOLD_MS = int(os.getenv("HOTKEY_HOLD_THRESHOLD_MS", "100"))
     # Double-tap window in ms - second press within this triggers toggle mode
     HOTKEY_DOUBLE_TAP_WINDOW_MS = int(os.getenv("HOTKEY_DOUBLE_TAP_WINDOW_MS", "300"))
+    # Activation delay in ms - wait before starting recording to distinguish from double-tap
+    HOTKEY_ACTIVATION_DELAY_MS = int(os.getenv("HOTKEY_ACTIVATION_DELAY_MS", "50"))
 
     # Visualizer theme color (red, orange, yellow, green, cyan, blue, purple, magenta)
     THEME_COLOR = os.getenv("THEME_COLOR", "orange").lower()
@@ -143,7 +165,10 @@ class Config:
 
     @classmethod
     def create_dirs(cls):
-        cls.MODELS_DIR.mkdir(exist_ok=True)
+        """Create required directories in user-writable locations."""
+        cls.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        cls.DATA_DIR.mkdir(parents=True, exist_ok=True)
+        cls.MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def get_theme_colors(cls):

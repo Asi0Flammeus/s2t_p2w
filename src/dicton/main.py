@@ -226,7 +226,15 @@ class Dicton:
             return text
 
         if mode == ProcessingMode.BASIC:
-            # Basic mode may have filler removal if enabled
+            # Basic mode uses LLM reformulation by default (cleaner output)
+            try:
+                from . import llm_processor
+
+                if config.ENABLE_REFORMULATION and llm_processor.is_available():
+                    return llm_processor.reformulate(text)
+            except ImportError:
+                pass
+            # Fallback to local filler removal if LLM not available
             if config.FILTER_FILLERS:
                 return self._filter_fillers_local(text)
             return text
@@ -313,7 +321,7 @@ class Dicton:
 
         if self._use_fn_key:
             print("Hotkey: FN key (hold=PTT, double-tap=toggle)")
-            print("Modes: FN+Space=Act on Text, FN+Ctrl=Translate")
+            print("Modes: FN+Ctrl=Translate, FN+Space=Act on Text (toggle to start/stop)")
         else:
             print(f"Hotkey: {config.HOTKEY_MODIFIER}+{config.HOTKEY_KEY}")
             self.keyboard.start()
@@ -390,12 +398,12 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Hotkeys (FN key mode):
-  FN (hold)        Push-to-talk recording
-  FN (double-tap)  Toggle recording mode
-  FN + Ctrl        Translation mode (Green ring)
-  FN + Shift       Reformulation mode (Purple ring)
-  FN + Space       Act on Text mode (Magenta ring)
-  FN + Alt         Raw mode (Yellow ring)
+  FN (hold)        Push-to-talk (with auto-reformulation)
+  FN (double-tap)  Toggle recording (with auto-reformulation)
+  FN + Ctrl        Translate to English (toggle: press to start/stop)
+  FN + Shift       LLM Reformulation (toggle: press to start/stop)
+  FN + Space       Act on Text - apply instruction to selection (toggle)
+  FN + Alt         Raw mode - no processing (toggle)
 
 Examples:
   dicton                  Start dictation service

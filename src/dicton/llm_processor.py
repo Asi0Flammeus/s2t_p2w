@@ -100,18 +100,21 @@ def reformulate(text: str, language: str | None = None) -> str | None:
     prompt = f"""You are a text cleanup assistant. Lightly reformulate the following text.
 
 IMPORTANT RULES:
-1. Remove filler words (um, uh, like, you know, etc.)
-2. Fix minor grammar issues
-3. DO NOT change the meaning or tone
-4. DO NOT add or remove content
-5. Preserve the speaker's voice and style
-6. Return ONLY the cleaned text, no explanations
+1. FIRST: Detect the language of the input text
+2. OUTPUT MUST BE IN THE SAME LANGUAGE as the input (French stays French, English stays English, etc.)
+3. Remove filler words (um, uh, like, you know, euh, genre, en fait, etc.)
+4. Fix minor grammar issues
+5. DO NOT change the meaning or tone
+6. DO NOT translate - keep the original language
+7. Preserve the speaker's voice and style
+8. Keep change to the strict minimum to stay as close to the orginal
+9. Return ONLY the cleaned text, no explanations
 {language_instruction}
 
 TEXT TO CLEAN:
 {text}
 
-CLEANED TEXT:"""
+CLEANED TEXT (same language as input):"""
 
     try:
         client = _get_client()
@@ -149,7 +152,10 @@ IMPORTANT RULES:
 1. Provide an accurate, natural translation
 2. Preserve the original tone and style
 3. Keep formatting (paragraphs, punctuation) consistent
-4. Return ONLY the translated text, no explanations
+4. Remove filler words (um, uh, like, you know, euh, genre, en fait, etc.)
+5. Fix minor grammar issues
+6. Keep change to the strict minimum to stay as close to the original
+7. Return ONLY the translated text, no explanations
 
 TEXT TO TRANSLATE:
 {text}
