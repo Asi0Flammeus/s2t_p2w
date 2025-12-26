@@ -45,6 +45,7 @@ class Visualizer:
         self.global_level = 0.0
         self.transparent = True  # Enable transparent background
         self.linux_opacity_mode = False  # Set by _setup_linux_transparency
+        self.xshape_mode = False  # Set by _setup_xshape_circular
 
         # Adaptive gain control
         self.adaptive_gain = DEFAULT_GAIN
@@ -227,52 +228,134 @@ class Visualizer:
             self.transparent = False
 
     def _setup_linux_transparency(self, pygame):
-        """Set up transparent window on Linux X11 using compositor.
+        """Set up transparent window on Linux X11.
 
-        Requires a compositor (picom, compton, mutter, kwin) to be running.
-        Uses SDL's window opacity feature for semi-transparent effect.
-
-        Note: True per-pixel transparency like Windows colorkey is not
-        available through pygame/SDL2 on X11. This provides a usable
-        alternative with uniform window opacity.
-
-        Configure with VISUALIZER_OPACITY env var (0.0-1.0, default 0.85).
+        Tries XShape extension first (works without compositor) for true
+        circular window shape, then falls back to window opacity if compositor
+        is available.
         """
+        # Try XShape first - works without compositor
+        if self._setup_xshape_circular(pygame):
+            return
+
+        # Fall back to opacity mode (requires compositor)
         try:
-            # Try using pygame's SDL2 video module for window opacity
-            # This requires pygame 2.0+ with SDL2 backend
             from pygame._sdl2.video import Window
 
             sdl_window = Window.from_display_module()
-            # Set window opacity from config (0.0 = fully transparent, 1.0 = fully opaque)
             opacity = max(0.0, min(1.0, config.VISUALIZER_OPACITY))
             sdl_window.opacity = opacity
             self.linux_opacity_mode = True
             if config.DEBUG:
                 print(f"✓ Linux X11 transparency enabled (opacity: {opacity})")
         except (ImportError, AttributeError) as e:
-            # SDL2 video module not available
             if config.DEBUG:
                 print(f"⚠ Linux transparency not available: {e}")
             self.linux_opacity_mode = False
             self.transparent = False
         except Exception as e:
-            # Opacity not supported by compositor/window manager
             if config.DEBUG:
                 print(f"⚠ Window opacity failed (compositor running?): {e}")
             self.linux_opacity_mode = False
             self.transparent = False
 
+    def _setup_xshape_circular(self, pygame):
+        """Set up circular window shape using X11 XShape extension.
+
+        Creates a truly circular window that works without a compositor.
+        The window shape is defined at the X11 protocol level, so only
+        the circular area is visible and receives input.
+
+        Returns True if successful, False otherwise.
+        """
+        try:
+            from Xlib import display
+            from Xlib.ext import shape
+
+            # Get X11 window ID from pygame
+            wm_info = pygame.display.get_wm_info()
+            window_id = wm_info.get("window")
+            if not window_id:
+                if config.DEBUG:
+                    print("⚠ Could not get X11 window ID")
+                return False
+
+            # Connect to X display
+            d = display.Display()
+            window = d.create_resource_object("window", window_id)
+
+            # Check if XShape extension is available
+            if not d.has_extension("SHAPE"):
+                if config.DEBUG:
+                    print("⚠ XShape extension not available")
+                return False
+
+            # Create a pixmap for the circular shape mask (1-bit depth)
+            pixmap = window.create_pixmap(SIZE, SIZE, 1)
+
+            # Create a GC for drawing on the pixmap
+            gc = pixmap.create_gc(foreground=0, background=0)
+
+            # Clear pixmap to transparent (0)
+            pixmap.fill_rectangle(gc, 0, 0, SIZE, SIZE)
+
+            # Draw filled circle (1 = opaque)
+            gc.change(foreground=1)
+            # fill_arc: x, y, width, height, angle1, angle2
+            # Angles are in 64ths of a degree, full circle = 360*64
+            pixmap.fill_arc(gc, 0, 0, SIZE, SIZE, 0, 360 * 64)
+
+            # Apply the shape to the window (method is on window object)
+            window.shape_mask(
+                shape.SO.Set,
+                shape.SK.Bounding,
+                0, 0,  # x, y offset
+                pixmap
+            )
+
+            # Also set input shape so clicks pass through transparent areas
+            window.shape_mask(
+                shape.SO.Set,
+                shape.SK.Input,
+                0, 0,
+                pixmap
+            )
+
+            d.sync()
+            pixmap.free()
+
+            self.xshape_mode = True
+            if config.DEBUG:
+                print("✓ XShape circular window enabled")
+            return True
+
+        except ImportError:
+            if config.DEBUG:
+                print("⚠ python-xlib not installed for XShape support")
+            return False
+        except Exception as e:
+            if config.DEBUG:
+                print(f"⚠ XShape setup failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def _draw(self, screen, pygame):
         # Use transparent colorkey background on Windows, dark background elsewhere
-        bg_color = TRANSPARENT_COLORKEY if (IS_WINDOWS and self.transparent) else (20, 20, 24)
+        # Background color: colorkey for Windows transparency, dark for XShape/others
+        if IS_WINDOWS and self.transparent:
+            bg_color = TRANSPARENT_COLORKEY
+        elif self.xshape_mode:
+            bg_color = (15, 15, 18)  # Dark background, shape handles transparency
+        else:
+            bg_color = (20, 20, 24)
         screen.fill(bg_color)
 
         center_x = SIZE // 2
-        center_y = SIZE // 2
+        center_y = SIZE // 3  # Position at 1/3 height from top
 
         outer_radius = SIZE // 2 - 10
-        inner_radius = 25
+        inner_radius = 18  # Smaller dark center circle
         mid_radius = (outer_radius + inner_radius) // 2
         max_amplitude = (outer_radius - inner_radius) // 2 - 2
 
