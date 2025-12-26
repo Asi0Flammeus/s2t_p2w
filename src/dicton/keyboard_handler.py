@@ -109,8 +109,8 @@ class KeyboardHandler:
     def _insert_text_linux(self, text: str):
         """Insert text on Linux using xdotool with speech-velocity delay"""
         try:
-            # 30ms delay mimics ~350 words/min speech pace, avoids React Error #185
-            subprocess.run(["xdotool", "type", "--delay", "30", "--", text], timeout=60)
+            # 50ms delay (~200 words/min) prevents React Error #185 in React apps
+            subprocess.run(["xdotool", "type", "--delay", "50", "--", text], timeout=60)
         except FileNotFoundError:
             # xdotool not installed, fallback to pynput
             print("⚠ xdotool not found, using fallback method")
@@ -127,8 +127,8 @@ class KeyboardHandler:
 
             # Disable fail-safe for text insertion
             pyautogui.FAILSAFE = False
-            # 30ms delay mimics ~350 words/min speech pace, avoids React Error #185
-            pyautogui.write(text, interval=0.03)
+            # 50ms delay (~200 words/min) prevents React Error #185 in React apps
+            pyautogui.write(text, interval=0.05)
         except ImportError:
             # Fallback to pynput
             self._insert_text_pynput(text)
@@ -144,9 +144,9 @@ class KeyboardHandler:
     def _insert_text_pynput(self, text: str):
         """Insert text using pynput keyboard controller (cross-platform fallback)"""
         try:
-            # 30ms delay mimics ~350 words/min speech pace, avoids React Error #185
+            # 50ms delay (~200 words/min) prevents React Error #185 in React apps
             for char in text:
                 self._keyboard_controller.type(char)
-                time.sleep(0.03)
+                time.sleep(0.05)
         except Exception as e:
             print(f"⚠ Text insertion error: {e}")
