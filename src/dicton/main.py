@@ -296,21 +296,15 @@ class Dicton:
             return text
 
     def _output_result(self, text: str, mode: ProcessingMode, replace_selection: bool):
-        """Output the processed text"""
-        if replace_selection and mode == ProcessingMode.ACT_ON_TEXT:
-            # Replace selected text with result
-            success = self.keyboard.replace_selection_with_text(text)
-            if success:
-                print(f"✓ Replaced: {text[:50]}..." if len(text) > 50 else f"✓ {text}")
-                notify("✓ Text Replaced", text[:100])
-            else:
-                # Fallback to insert
-                self.keyboard.insert_text(text)
-                print(f"✓ Inserted: {text[:50]}..." if len(text) > 50 else f"✓ {text}")
-                notify("✓ Done", text[:100])
+        """Output the processed text using character-by-character typing"""
+        # All modes use insert_text (xdotool type) for reliable output
+        # For Act on Text: selection is still active, typing replaces it naturally
+        self.keyboard.insert_text(text)
+
+        if mode == ProcessingMode.ACT_ON_TEXT:
+            print(f"✓ Replaced: {text[:50]}..." if len(text) > 50 else f"✓ {text}")
+            notify("✓ Text Replaced", text[:100])
         else:
-            # Normal text insertion
-            self.keyboard.insert_text(text)
             print(f"✓ {text[:50]}..." if len(text) > 50 else f"✓ {text}")
             notify("✓ Done", text[:100])
 
