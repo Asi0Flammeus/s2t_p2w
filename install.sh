@@ -71,6 +71,7 @@ install_dicton() {
     # Copy project files
     cp -r src "$INSTALL_DIR/"
     cp pyproject.toml "$INSTALL_DIR/"
+    cp README.md "$INSTALL_DIR/"
     cp .env.example "$INSTALL_DIR/"
 
     # Create venv and install packages
@@ -80,7 +81,7 @@ install_dicton() {
     "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
 
     echo -e "${YELLOW}Installing Python packages...${NC}"
-    "$INSTALL_DIR/venv/bin/pip" install "$INSTALL_DIR"
+    "$INSTALL_DIR/venv/bin/pip" install "$INSTALL_DIR[xshape]"
     echo -e "${GREEN}✓ Python packages installed${NC}"
 
     # Create config if not exists
@@ -144,10 +145,18 @@ update_dicton() {
     # Update source files
     cp -r src "$INSTALL_DIR/"
     cp pyproject.toml "$INSTALL_DIR/"
+    cp README.md "$INSTALL_DIR/"
+
+    # Recreate venv if missing
+    if [ ! -f "$INSTALL_DIR/venv/bin/pip" ]; then
+        echo -e "${YELLOW}Recreating virtual environment...${NC}"
+        python3 -m venv "$INSTALL_DIR/venv"
+        "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
+    fi
 
     # Update packages
     echo -e "${YELLOW}Updating Python packages...${NC}"
-    "$INSTALL_DIR/venv/bin/pip" install --upgrade "$INSTALL_DIR"
+    "$INSTALL_DIR/venv/bin/pip" install --upgrade "$INSTALL_DIR[xshape]"
     echo -e "${GREEN}✓ Python packages updated${NC}"
 
     # Restore config

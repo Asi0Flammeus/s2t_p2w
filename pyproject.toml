@@ -48,6 +48,9 @@ vispy = [
 gtk = [
     "PyGObject>=3.42.0",
 ]
+xshape = [
+    "python-xlib>=0.33",
+]
 notifications = [
     "plyer>=2.1.0",
 ]
