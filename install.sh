@@ -158,6 +158,55 @@ EOF
     echo -e "${YELLOW}⚠ IMPORTANT: Log out and back in for FN key to work${NC}"
 }
 
+sync_env_config() {
+    # Sync missing config fields from .env.example to .env
+    local env_file="$1"
+    local example_file="$2"
+    local added=0
+    local key=""
+
+    if [ ! -f "$env_file" ]; then
+        cp "$example_file" "$env_file"
+        echo -e "${GREEN}✓ Created .env from template${NC}"
+        return
+    fi
+
+    if [ ! -f "$example_file" ]; then
+        return
+    fi
+
+    # Extract all KEY=value lines from .env.example (ignore comments and empty lines)
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip empty lines and comments
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+
+        # Extract the key (everything before first =)
+        key=$(echo "$line" | cut -d'=' -f1)
+
+        # Validate key format (must start with letter or underscore)
+        if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            continue
+        fi
+
+        # Check if this key exists in .env (as KEY= at start of line)
+        if ! grep -q "^${key}=" "$env_file" 2>/dev/null; then
+            # Key is missing, append it with the default value
+            echo "" >> "$env_file"
+            echo "# Added by update on $(date +%Y-%m-%d)" >> "$env_file"
+            echo "$line" >> "$env_file"
+            echo -e "${YELLOW}  + Added missing config: ${key}${NC}"
+            ((added++)) || true
+        fi
+    done < "$example_file"
+
+    if [ $added -gt 0 ]; then
+        echo -e "${GREEN}✓ Added $added new config option(s) to .env${NC}"
+    else
+        echo -e "${GREEN}✓ Config is up to date${NC}"
+    fi
+}
+
 update_dicton() {
     check_root
 
@@ -175,6 +224,7 @@ update_dicton() {
     cp -r src "$INSTALL_DIR/"
     cp pyproject.toml "$INSTALL_DIR/"
     cp README.md "$INSTALL_DIR/"
+    cp .env.example "$INSTALL_DIR/"
 
     # Recreate venv if missing
     if [ ! -f "$INSTALL_DIR/venv/bin/pip" ]; then
@@ -193,6 +243,10 @@ update_dicton() {
 
     # Restore config
     cp /tmp/dicton.env.bak "$INSTALL_DIR/.env" 2>/dev/null || true
+
+    # Sync any new config options from .env.example
+    echo -e "${YELLOW}Checking for new config options...${NC}"
+    sync_env_config "$INSTALL_DIR/.env" "$INSTALL_DIR/.env.example"
 
     # Update version
     echo "$(date +%Y%m%d)" > "$INSTALL_DIR/VERSION"
