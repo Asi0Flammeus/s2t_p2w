@@ -103,9 +103,17 @@ class Config:
     # ElevenLabs API
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 
+    # LLM Provider selection: "gemini" or "anthropic"
+    # The primary provider will be used first, with fallback to the other if available
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()
+
     # Gemini API (for Act on Text, reformulation, translation)
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+
+    # Anthropic API (alternative for Act on Text, reformulation, translation)
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
 
     # ElevenLabs STT model
     ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "scribe_v1")
@@ -157,8 +165,8 @@ class Config:
     # Filler word filtering: "true" to enable removal of filler words (um, uh, like, etc.)
     FILTER_FILLERS = os.getenv("FILTER_FILLERS", "true").lower() == "true"
 
-    # LLM-based reformulation: "true" to enable light reformulation via Gemini
-    # When enabled, FN+Shift uses LLM for smarter cleanup. When disabled, uses local filler removal only.
+    # LLM-based reformulation: "true" to enable light reformulation via configured LLM_PROVIDER
+    # When enabled, uses LLM for smarter cleanup. When disabled, uses local filler removal only.
     ENABLE_REFORMULATION = os.getenv("ENABLE_REFORMULATION", "true").lower() == "true"
 
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"

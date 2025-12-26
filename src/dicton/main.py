@@ -256,8 +256,8 @@ class Dicton:
             from . import llm_processor
 
             if not llm_processor.is_available():
-                print("⚠ LLM not available (check GEMINI_API_KEY)")
-                notify("⚠ LLM Not Available", "Set GEMINI_API_KEY")
+                print("⚠ LLM not available (set GEMINI_API_KEY or ANTHROPIC_API_KEY)")
+                notify("⚠ LLM Not Available", "Configure LLM_PROVIDER")
                 return text  # Fallback to raw text
 
             if mode == ProcessingMode.ACT_ON_TEXT and selected_text:

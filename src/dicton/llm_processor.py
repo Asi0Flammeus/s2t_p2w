@@ -1,18 +1,26 @@
-"""LLM Processor for Dicton - Gemini API integration for text manipulation
+"""LLM Processor for Dicton - Multi-provider API integration for text manipulation
 
 This module provides LLM-powered text processing for:
 - Act on Text: Apply voice instructions to selected text
 - Reformulation: Clean up and lightly reformat transcribed text
 - Translation: Translate text to target language
+
+Supports both Gemini and Anthropic (Haiku) with automatic fallback.
 """
 
 from .config import config
 
-# Lazy import to avoid loading google-genai unless needed
+# Lazy imports to avoid loading libraries unless needed
 _genai_client = None
+_anthropic_client = None
 
 
-def _get_client():
+# =============================================================================
+# Client Initialization
+# =============================================================================
+
+
+def _get_gemini_client():
     """Get or create the Gemini client (lazy initialization)."""
     global _genai_client
 
@@ -20,18 +28,129 @@ def _get_client():
         return _genai_client
 
     if not config.GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY not configured. Set it in your environment.")
+        return None
 
     try:
         from google import genai
 
         _genai_client = genai.Client(api_key=config.GEMINI_API_KEY)
         return _genai_client
-    except ImportError as e:
-        raise ImportError(
-            "google-genai not installed. Install with: pip install google-genai\n"
-            "Or: pip install dicton[llm]"
-        ) from e
+    except ImportError:
+        return None
+
+
+def _get_anthropic_client():
+    """Get or create the Anthropic client (lazy initialization)."""
+    global _anthropic_client
+
+    if _anthropic_client is not None:
+        return _anthropic_client
+
+    if not config.ANTHROPIC_API_KEY:
+        return None
+
+    try:
+        import anthropic
+
+        _anthropic_client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        return _anthropic_client
+    except ImportError:
+        return None
+
+
+# =============================================================================
+# Provider-specific implementations
+# =============================================================================
+
+
+def _call_gemini(prompt: str) -> str | None:
+    """Call Gemini API with the given prompt."""
+    client = _get_gemini_client()
+    if client is None:
+        return None
+
+    try:
+        response = client.models.generate_content(
+            model=config.GEMINI_MODEL,
+            contents=prompt,
+        )
+        if response.text:
+            return response.text.strip()
+        return None
+    except Exception as e:
+        if config.DEBUG:
+            print(f"Gemini error: {e}")
+        raise
+
+
+def _call_anthropic(prompt: str) -> str | None:
+    """Call Anthropic API with the given prompt."""
+    client = _get_anthropic_client()
+    if client is None:
+        return None
+
+    try:
+        message = client.messages.create(
+            model=config.ANTHROPIC_MODEL,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if message.content and len(message.content) > 0:
+            return message.content[0].text.strip()
+        return None
+    except Exception as e:
+        if config.DEBUG:
+            print(f"Anthropic error: {e}")
+        raise
+
+
+def _call_llm_with_fallback(prompt: str) -> str | None:
+    """Call LLM with configured provider, falling back to alternative on error.
+
+    Uses the provider configured in LLM_PROVIDER first. If that fails and the
+    alternative provider is configured, tries that as fallback.
+    """
+    primary = config.LLM_PROVIDER
+    providers = {
+        "gemini": (_call_gemini, _get_gemini_client),
+        "anthropic": (_call_anthropic, _get_anthropic_client),
+    }
+
+    # Determine order of providers to try
+    if primary == "anthropic":
+        order = ["anthropic", "gemini"]
+    else:
+        order = ["gemini", "anthropic"]
+
+    last_error = None
+
+    for provider_name in order:
+        call_fn, get_client_fn = providers[provider_name]
+
+        # Skip if this provider isn't configured
+        if get_client_fn() is None:
+            continue
+
+        try:
+            result = call_fn(prompt)
+            if result is not None:
+                return result
+        except Exception as e:
+            last_error = e
+            if config.DEBUG:
+                print(f"{provider_name} failed, trying fallback: {e}")
+            continue
+
+    # All providers failed
+    if last_error and config.DEBUG:
+        print(f"All LLM providers failed. Last error: {last_error}")
+
+    return None
+
+
+# =============================================================================
+# Public API
+# =============================================================================
 
 
 def act_on_text(selected_text: str, instruction: str) -> str | None:
@@ -63,21 +182,7 @@ USER INSTRUCTION:
 
 MODIFIED TEXT:"""
 
-    try:
-        client = _get_client()
-        response = client.models.generate_content(
-            model=config.GEMINI_MODEL,
-            contents=prompt,
-        )
-
-        if response.text:
-            return response.text.strip()
-        return None
-
-    except Exception as e:
-        if config.DEBUG:
-            print(f"LLM error: {e}")
-        return None
+    return _call_llm_with_fallback(prompt)
 
 
 def reformulate(text: str, language: str | None = None) -> str | None:
@@ -116,21 +221,7 @@ TEXT TO CLEAN:
 
 CLEANED TEXT (same language as input):"""
 
-    try:
-        client = _get_client()
-        response = client.models.generate_content(
-            model=config.GEMINI_MODEL,
-            contents=prompt,
-        )
-
-        if response.text:
-            return response.text.strip()
-        return None
-
-    except Exception as e:
-        if config.DEBUG:
-            print(f"LLM reformulation error: {e}")
-        return None
+    return _call_llm_with_fallback(prompt)
 
 
 def translate(text: str, target_language: str = "English") -> str | None:
@@ -162,31 +253,50 @@ TEXT TO TRANSLATE:
 
 TRANSLATION:"""
 
-    try:
-        client = _get_client()
-        response = client.models.generate_content(
-            model=config.GEMINI_MODEL,
-            contents=prompt,
-        )
-
-        if response.text:
-            return response.text.strip()
-        return None
-
-    except Exception as e:
-        if config.DEBUG:
-            print(f"LLM translation error: {e}")
-        return None
+    return _call_llm_with_fallback(prompt)
 
 
 def is_available() -> bool:
-    """Check if LLM processing is available (API key configured, library installed)."""
-    if not config.GEMINI_API_KEY:
-        return False
+    """Check if LLM processing is available (at least one provider configured)."""
+    # Check Gemini
+    if config.GEMINI_API_KEY:
+        try:
+            from google import genai  # noqa: F401
 
-    try:
-        from google import genai  # noqa: F401
+            return True
+        except ImportError:
+            pass
 
-        return True
-    except ImportError:
-        return False
+    # Check Anthropic
+    if config.ANTHROPIC_API_KEY:
+        try:
+            import anthropic  # noqa: F401
+
+            return True
+        except ImportError:
+            pass
+
+    return False
+
+
+def get_available_providers() -> list[str]:
+    """Get list of available LLM providers."""
+    providers = []
+
+    if config.GEMINI_API_KEY:
+        try:
+            from google import genai  # noqa: F401
+
+            providers.append("gemini")
+        except ImportError:
+            pass
+
+    if config.ANTHROPIC_API_KEY:
+        try:
+            import anthropic  # noqa: F401
+
+            providers.append("anthropic")
+        except ImportError:
+            pass
+
+    return providers
