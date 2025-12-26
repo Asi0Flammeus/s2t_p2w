@@ -300,6 +300,14 @@ class Dicton:
         print("🚀 Dicton")
         print("=" * 50)
 
+        # Check for updates in background (non-blocking)
+        try:
+            from .update_checker import check_for_updates_async
+
+            check_for_updates_async()
+        except ImportError:
+            pass  # Update checker not critical
+
         # Try to initialize FN key handler
         self._use_fn_key = self._init_fn_handler()
 
@@ -392,6 +400,7 @@ Hotkeys (FN key mode):
 Examples:
   dicton                  Start dictation service
   dicton --benchmark      Show latency statistics
+  dicton --check-update   Check for new version
   dicton --clear-log      Clear latency history
 """,
     )
@@ -399,6 +408,11 @@ Examples:
         "--benchmark",
         action="store_true",
         help="Show latency report from previous sessions",
+    )
+    parser.add_argument(
+        "--check-update",
+        action="store_true",
+        help="Check for available updates",
     )
     parser.add_argument(
         "--clear-log",
@@ -417,6 +431,19 @@ Examples:
         from . import __version__
 
         print(f"Dicton v{__version__}")
+        return
+
+    if args.check_update:
+        from .update_checker import check_for_updates, print_update_notification
+
+        print("Checking for updates...")
+        update = check_for_updates(force=True)
+        if update:
+            print_update_notification(update)
+        else:
+            from . import __version__
+
+            print(f"✓ You are running the latest version (v{__version__})")
         return
 
     if args.clear_log:
