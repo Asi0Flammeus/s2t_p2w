@@ -11,9 +11,19 @@ from enum import Enum, auto
 
 from .config import config
 from .platform_utils import IS_LINUX
+from .processing_mode import ProcessingMode
 
 # XF86WakeUp keycode - typically mapped to FN key on many laptops
 KEY_WAKEUP = 143  # evdev keycode for KEY_WAKEUP (XF86WakeUp)
+
+# Modifier keycodes (from evdev/ecodes)
+KEY_SPACE = 57
+KEY_LEFTCTRL = 29
+KEY_RIGHTCTRL = 97
+KEY_LEFTSHIFT = 42
+KEY_RIGHTSHIFT = 54
+KEY_LEFTALT = 56
+KEY_RIGHTALT = 100
 
 
 class HotkeyState(Enum):
@@ -41,15 +51,30 @@ class FnKeyHandler:
 
     def __init__(
         self,
-        on_start_recording: Callable[[], None] | None = None,
+        on_start_recording: Callable[[ProcessingMode], None] | None = None,
         on_stop_recording: Callable[[], None] | None = None,
     ):
+        """Initialize FN key handler.
+
+        Args:
+            on_start_recording: Callback when recording starts, receives the ProcessingMode.
+            on_stop_recording: Callback when recording stops.
+        """
         self.on_start_recording = on_start_recording
         self.on_stop_recording = on_stop_recording
 
         # State machine
         self._state = HotkeyState.IDLE
         self._state_lock = threading.Lock()
+
+        # Current processing mode (determined by modifiers at key press)
+        self._current_mode = ProcessingMode.BASIC
+
+        # Modifier key states (tracked via evdev)
+        self._space_pressed = False
+        self._ctrl_pressed = False
+        self._shift_pressed = False
+        self._alt_pressed = False
 
         # Timing
         self._key_down_time: float = 0
@@ -164,6 +189,9 @@ class FnKeyHandler:
                 if event.type != ecodes.EV_KEY:
                     continue
 
+                # Track modifier key states
+                self._update_modifier_state(event.code, event.value)
+
                 # Check for our target key (KEY_WAKEUP or fallback)
                 if event.code == KEY_WAKEUP or event.code == 464:  # KEY_FN
                     if event.value == 1:  # Key down
@@ -176,6 +204,43 @@ class FnKeyHandler:
             if self._running and config.DEBUG:
                 print(f"FN key listener error: {e}")
 
+    def _update_modifier_state(self, keycode: int, value: int):
+        """Track modifier key states for mode detection."""
+        pressed = value == 1  # 1 = press, 0 = release, 2 = repeat
+
+        if keycode == KEY_SPACE:
+            self._space_pressed = pressed
+        elif keycode in (KEY_LEFTCTRL, KEY_RIGHTCTRL):
+            self._ctrl_pressed = pressed
+        elif keycode in (KEY_LEFTSHIFT, KEY_RIGHTSHIFT):
+            self._shift_pressed = pressed
+        elif keycode in (KEY_LEFTALT, KEY_RIGHTALT):
+            self._alt_pressed = pressed
+
+    def _detect_mode(self) -> ProcessingMode:
+        """Detect processing mode based on current modifier states.
+
+        Priority order (matching TODO.md hotkey matrix):
+        - FN + Space → ACT_ON_TEXT (Magenta)
+        - FN + Ctrl + Shift → TRANSLATE_REFORMAT (Cyan)
+        - FN + Ctrl → TRANSLATION (Green)
+        - FN + Shift → REFORMULATION (Purple)
+        - FN + Alt → RAW (Yellow)
+        - FN only → BASIC (Orange)
+        """
+        if self._space_pressed:
+            return ProcessingMode.ACT_ON_TEXT
+        elif self._ctrl_pressed and self._shift_pressed:
+            return ProcessingMode.TRANSLATE_REFORMAT
+        elif self._ctrl_pressed:
+            return ProcessingMode.TRANSLATION
+        elif self._shift_pressed:
+            return ProcessingMode.REFORMULATION
+        elif self._alt_pressed:
+            return ProcessingMode.RAW
+        else:
+            return ProcessingMode.BASIC
+
     def _on_fn_key_down(self):
         """Handle FN key press"""
         now = time.time()
@@ -184,6 +249,8 @@ class FnKeyHandler:
             if self._state == HotkeyState.IDLE:
                 self._key_down_time = now
                 self._state = HotkeyState.KEY_DOWN
+                # Capture mode at key press (modifiers determine mode)
+                self._current_mode = self._detect_mode()
                 # Start timer to check for hold
                 self._start_hold_timer()
 
@@ -196,6 +263,8 @@ class FnKeyHandler:
                     # Window expired, treat as new press
                     self._key_down_time = now
                     self._state = HotkeyState.KEY_DOWN
+                    # Capture mode for new press
+                    self._current_mode = self._detect_mode()
                     self._start_hold_timer()
 
             elif self._state == HotkeyState.RECORDING_TOGGLE:
@@ -259,10 +328,13 @@ class FnKeyHandler:
         timer.start()
 
     def _trigger_start_recording(self):
-        """Trigger recording start callback"""
+        """Trigger recording start callback with current mode"""
         if self.on_start_recording:
+            mode = self._current_mode
             # Run callback in separate thread to not block event handling
-            threading.Thread(target=self.on_start_recording, daemon=True).start()
+            threading.Thread(
+                target=lambda: self.on_start_recording(mode), daemon=True
+            ).start()
 
     def _trigger_stop_recording(self):
         """Trigger recording stop callback"""
@@ -286,3 +358,9 @@ class FnKeyHandler:
         """Check if in toggle (locked) recording mode"""
         with self._state_lock:
             return self._state == HotkeyState.RECORDING_TOGGLE
+
+    @property
+    def current_mode(self) -> ProcessingMode:
+        """Get the current processing mode"""
+        with self._state_lock:
+            return self._current_mode

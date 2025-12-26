@@ -150,3 +150,96 @@ class KeyboardHandler:
                 time.sleep(0.05)
         except Exception as e:
             print(f"⚠ Text insertion error: {e}")
+
+    def replace_selection_with_text(self, text: str) -> bool:
+        """Replace the currently selected text with new text.
+
+        Uses clipboard (Ctrl+V) method for reliable replacement across apps.
+        Preserves original clipboard content.
+
+        Args:
+            text: The text to replace selection with.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        if not text:
+            return False
+
+        if IS_LINUX:
+            return self._replace_selection_linux(text)
+        elif IS_WINDOWS:
+            return self._replace_selection_windows(text)
+        else:
+            return False
+
+    def _replace_selection_linux(self, text: str) -> bool:
+        """Replace selection on Linux using xclip + Ctrl+V"""
+        from .selection_handler import get_clipboard, set_clipboard
+
+        try:
+            # Save current clipboard
+            original_clipboard = get_clipboard()
+
+            # Set new text to clipboard
+            if not set_clipboard(text):
+                return False
+
+            # Small delay to ensure clipboard is ready
+            time.sleep(0.05)
+
+            # Simulate Ctrl+V to paste
+            self._keyboard_controller.press(Key.ctrl)
+            self._keyboard_controller.press("v")
+            self._keyboard_controller.release("v")
+            self._keyboard_controller.release(Key.ctrl)
+
+            # Small delay before restoring clipboard
+            time.sleep(0.1)
+
+            # Restore original clipboard if there was one
+            if original_clipboard:
+                set_clipboard(original_clipboard)
+
+            return True
+
+        except Exception as e:
+            print(f"⚠ Replace selection error: {e}")
+            return False
+
+    def _replace_selection_windows(self, text: str) -> bool:
+        """Replace selection on Windows using clipboard + Ctrl+V"""
+        try:
+            import pyperclip
+
+            # Save current clipboard
+            try:
+                original_clipboard = pyperclip.paste()
+            except Exception:
+                original_clipboard = None
+
+            # Set new text
+            pyperclip.copy(text)
+
+            # Small delay
+            time.sleep(0.05)
+
+            # Simulate Ctrl+V
+            self._keyboard_controller.press(Key.ctrl)
+            self._keyboard_controller.press("v")
+            self._keyboard_controller.release("v")
+            self._keyboard_controller.release(Key.ctrl)
+
+            # Restore original
+            time.sleep(0.1)
+            if original_clipboard:
+                pyperclip.copy(original_clipboard)
+
+            return True
+
+        except ImportError:
+            print("⚠ pyperclip not installed for Windows clipboard")
+            return False
+        except Exception as e:
+            print(f"⚠ Replace selection error: {e}")
+            return False
