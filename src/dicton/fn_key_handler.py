@@ -237,8 +237,8 @@ class FnKeyHandler:
         Priority order:
         - FN + Ctrl + Shift → TRANSLATE_REFORMAT (Cyan)
         - FN + Ctrl → TRANSLATION (Green)
-        - FN + Shift → REFORMULATION (Purple)
-        - FN + Alt → ACT_ON_TEXT (Magenta)
+        - FN + Shift → ACT_ON_TEXT (Magenta)
+        - FN + Alt → REFORMULATION (Purple)
         - FN + Space → RAW (Yellow)
         - FN only → BASIC (Orange)
         """
@@ -247,9 +247,9 @@ class FnKeyHandler:
         elif self._ctrl_pressed:
             return ProcessingMode.TRANSLATION
         elif self._shift_pressed:
-            return ProcessingMode.REFORMULATION
-        elif self._alt_pressed:
             return ProcessingMode.ACT_ON_TEXT
+        elif self._alt_pressed:
+            return ProcessingMode.REFORMULATION
         elif self._space_pressed:
             return ProcessingMode.RAW
         else:

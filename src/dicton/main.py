@@ -321,7 +321,7 @@ class Dicton:
 
         if self._use_fn_key:
             print("Hotkey: FN key (hold=PTT, double-tap=toggle)")
-            print("Modes: FN+Ctrl=Translate, FN+Alt=Act on Text (toggle to start/stop)")
+            print("Modes: FN+Ctrl=Translate, FN+Shift=Act on Text (toggle to start/stop)")
         else:
             print(f"Hotkey: {config.HOTKEY_MODIFIER}+{config.HOTKEY_KEY}")
             self.keyboard.start()
@@ -401,8 +401,8 @@ Hotkeys (FN key mode):
   FN (hold)        Push-to-talk (with auto-reformulation)
   FN (double-tap)  Toggle recording (with auto-reformulation)
   FN + Ctrl        Translate to English (toggle: press to start/stop)
-  FN + Shift       LLM Reformulation (toggle: press to start/stop)
-  FN + Alt         Act on Text - apply instruction to selection (toggle)
+  FN + Shift       Act on Text - apply instruction to selection (toggle)
+  FN + Alt         LLM Reformulation (toggle: press to start/stop)
   FN + Space       Raw mode - no processing (toggle)
 
 Examples:
