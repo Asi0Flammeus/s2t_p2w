@@ -69,6 +69,7 @@ POSITION_PRESETS = {
     "bottom-left": lambda w, h, size: (20, h - size - 60),
     "bottom-center": lambda w, h, size: ((w - size) // 2, h - size - 60),
     "center": lambda w, h, size: ((w - size) // 2, (h - size) // 2),
+    "center-upper": lambda w, h, size: ((w - size) // 2, h // 3 - size // 2),
 }
 
 

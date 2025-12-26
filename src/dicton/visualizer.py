@@ -352,10 +352,10 @@ class Visualizer:
         screen.fill(bg_color)
 
         center_x = SIZE // 2
-        center_y = SIZE // 3  # Position at 1/3 height from top
+        center_y = SIZE // 2
 
         outer_radius = SIZE // 2 - 10
-        inner_radius = 18  # Smaller dark center circle
+        inner_radius = 20  # Inner edge of ring
         mid_radius = (outer_radius + inner_radius) // 2
         max_amplitude = (outer_radius - inner_radius) // 2 - 2
 
@@ -436,8 +436,8 @@ class Visualizer:
         if len(inner_points) > 2:
             pygame.draw.polygon(screen, self.COLOR_DIM, inner_points, width=2)
 
-        # Cut out center with transparent colorkey for ring-only mode
-        pygame.draw.circle(screen, bg_color, (center_x, center_y), inner_radius - 3)
+        # Cut out center - smaller dark circle in the middle
+        pygame.draw.circle(screen, bg_color, (center_x, center_y), inner_radius - 8)
 
         # Highlight (reduced intensity for lower saturation)
         if global_level > 0.25:
