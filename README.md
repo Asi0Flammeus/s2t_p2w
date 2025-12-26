@@ -11,435 +11,299 @@
 
 # Dicton
 
-A fast voice-to-text application that transcribes your speech directly at the cursor position. Press `Alt+G` to start recording, press again to stop and transcribe!
-
-**Supported Platforms:** Linux (X11), Windows, macOS
+A fast, low-latency voice-to-text dictation tool for Linux. Press the FN key to start recording, release to transcribe directly at your cursor position.
 
 ## Features
 
-- **ElevenLabs STT**: Fast, accurate transcription using ElevenLabs Speech-to-Text API
+- **FN Key Activation**: Use your laptop's FN key for seamless push-to-talk dictation
+- **Multiple Processing Modes**: Basic transcription, translation, LLM reformulation
+- **Real-time Visualizer**: Animated toric ring shows audio levels with mode-specific colors
+- **ElevenLabs STT**: Fast, accurate transcription via ElevenLabs Scribe API
+- **LLM Enhancement**: Optional Gemini-powered text cleanup and translation
 - **System-wide**: Works in any application where you can type
-- **Audio Visualizer**: Elegant circular waveform display while recording
-- **Multilingual**: Supports auto language detection and manual language selection
-- **Notifications**: Desktop notifications for recording status
-- **Configurable**: Customize hotkeys, language, and microphone settings
-- **Toggle Recording**: Press hotkey to start, press again to stop
-- **Visual Feedback**: Animated donut visualizer shows audio levels in real-time
+- **Low Latency**: Optimized pipeline for natural dictation flow
+
+## Hotkey System
+
+Dicton uses the **FN key** (XF86WakeUp) as the primary trigger, with modifier keys for different modes.
+
+### Basic Mode (FN only)
+| Action | Behavior |
+|--------|----------|
+| **Hold FN** | Push-to-talk: records while held, transcribes on release |
+| **Double-tap FN** | Toggle mode: tap to start, tap again to stop |
+
+### Processing Modes
+
+| Hotkey | Mode | Ring Color | Description |
+|--------|------|------------|-------------|
+| FN | Basic | Orange | Transcribe with auto-reformulation |
+| FN + Ctrl | Translation | Green | Transcribe and translate to English |
+| FN + Alt | Reformulation | Purple | LLM-powered text cleanup |
+| FN + Shift | Act on Text | Magenta | **(WIP)** Apply instruction to selected text |
+| FN + Space | Raw | Yellow | Raw transcription, no processing |
+
+> **Note**: Act on Text mode is experimental and still under development.
+
+### Visual Feedback
+- **Animated ring**: Recording in progress
+- **Ring color**: Indicates active processing mode
+- **No ring**: Idle state
 
 ## Requirements
 
-### All Platforms
-- Python 3.10 or higher
-- ElevenLabs API key ([get one here](https://elevenlabs.io/app/settings/api-keys))
+### Linux (Primary Platform)
+- Python 3.10+
+- X11 or Wayland (with XWayland)
+- System packages: `xdotool`, `libnotify-bin`, `xclip` (or `wl-clipboard` for Wayland)
+- ElevenLabs API key ([get one here](https://elevenlabs.io/))
+- Gemini API key (optional, for LLM features)
 
-### Linux
-- PulseAudio or ALSA audio system
-- X11 window system (for xdotool keyboard automation)
-- System packages: `xdotool`, `libnotify-bin`
-
-### Windows
-- Windows 10 or later
-- Working microphone
-- No additional system packages required
-
-### macOS
-- macOS 10.15 or later
-- Microphone access permissions
+### Other Platforms
+- Windows and macOS have basic support but FN key mode is Linux-only
+- Use `Alt+G` hotkey on other platforms
 
 ## Installation
 
-### Quick Install (pip)
+### Quick Install (System-wide)
+
+```bash
+# Clone the repository
+git clone https://github.com/Asi0Flammeus/dicton.git
+cd dicton
+
+# Install system-wide (requires sudo)
+sudo ./install.sh install
+
+# Configure API keys
+sudo nano /opt/dicton/.env
+# Set: ELEVENLABS_API_KEY=your_key
+# Set: GEMINI_API_KEY=your_key (optional)
+
+# Add user to input group (required for FN key)
+sudo usermod -aG input $USER
+# Log out and back in
+
+# Run
+dicton
+```
+
+### User Install (pip)
 
 ```bash
 # Install from PyPI
-pip install dicton
+pip install dicton[fnkey]
 
-# Or install with all optional features
-pip install dicton[all]
-```
+# Create config directory
+mkdir -p ~/.config/dicton
 
-After installing, create a `.env` file with your ElevenLabs API key:
-```bash
-echo "ELEVENLABS_API_KEY=your_key_here" > .env
-```
-
-Then run:
-```bash
-dicton
-```
-
-### Windows
-
-**Option 1: Batch Script**
-```cmd
-REM Clone or download the repository
-cd dicton
-
-REM Run installer
-install.bat
-
-REM Configure API key
-copy .env.example .env
-notepad .env
-REM Add your ELEVENLABS_API_KEY
-
-REM Run
-run.bat
-```
-
-**Option 2: PowerShell**
-```powershell
-# Clone or download the repository
-cd dicton
-
-# Run installer
-powershell -ExecutionPolicy Bypass -File scripts\install.ps1
-
-# Configure API key
-Copy-Item .env.example .env
-notepad .env
-# Add your ELEVENLABS_API_KEY
-
-# Run
-.\run.bat
-```
-
-**Note on PyAudio (Windows):** If PyAudio installation fails:
-```cmd
-pip install pipwin
-pipwin install pyaudio
-```
-Or download a wheel from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
-
-### Linux
-
-**Quick Install (Local)**
-```bash
-# Clone the repository
-git clone https://github.com/Asi0Flammeus/dicton.git
-cd dicton
-
-# Run the install script
-chmod +x scripts/install.sh
-./scripts/install.sh
-
-# Add your API key
-nano .env
-# Set: ELEVENLABS_API_KEY=your_key_here
-
-# Start the service
-systemctl --user start dicton
-```
-
-**System-wide Install (with sudo)**
-```bash
-# Install system-wide to /opt/dicton
-sudo ./install.sh install
-
-# Edit configuration
-sudo nano /opt/dicton/.env
-
-# Run manually
-dicton
-
-# Or enable as systemd service
-systemctl --user enable dicton
-systemctl --user start dicton
-```
-
-**System Dependencies (Linux)**
-
-Debian/Ubuntu:
-```bash
-sudo apt install python3-venv python3-dev portaudio19-dev xdotool libnotify-bin
-```
-
-Arch Linux:
-```bash
-sudo pacman -S python portaudio xdotool libnotify
-```
-
-### macOS
-
-```bash
-# Clone the repository
-git clone https://github.com/Asi0Flammeus/dicton.git
-cd dicton
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install portaudio first (required for pyaudio)
-brew install portaudio
-
-# Install the package
-pip install -e .
-
-# Configure
-cp .env.example .env
-nano .env
-# Add your ELEVENLABS_API_KEY
+# Add API keys
+echo "ELEVENLABS_API_KEY=your_key" > ~/.config/dicton/.env
+echo "GEMINI_API_KEY=your_key" >> ~/.config/dicton/.env
 
 # Run
 dicton
+```
+
+### System Dependencies
+
+**Debian/Ubuntu:**
+```bash
+sudo apt install python3-venv python3-dev portaudio19-dev xdotool libnotify-bin xclip
+# For Wayland:
+sudo apt install wl-clipboard
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S python portaudio xdotool libnotify xclip
+# For Wayland:
+sudo pacman -S wl-clipboard
+```
+
+## Configuration
+
+Configuration is read from (in order):
+1. `./.env` (current directory)
+2. `~/.config/dicton/.env` (user config)
+3. `/opt/dicton/.env` (system install)
+
+### Environment Variables
+
+```bash
+# Required
+ELEVENLABS_API_KEY=your_elevenlabs_key
+
+# Optional - LLM Features (Gemini)
+GEMINI_API_KEY=your_gemini_key
+ENABLE_REFORMULATION=true
+
+# Hotkey Settings
+HOTKEY_BASE=fn                    # "fn" for FN key, "alt+g" for legacy
+HOTKEY_HOLD_THRESHOLD_MS=100      # Hold duration for PTT vs tap
+HOTKEY_DOUBLE_TAP_WINDOW_MS=300   # Window for double-tap detection
+HOTKEY_ACTIVATION_DELAY_MS=50     # Delay before activation (avoids double-tap confusion)
+
+# Language
+LANGUAGE=auto                     # auto, en, fr, de, es, etc.
+
+# Visualizer
+THEME_COLOR=orange                # Ring color (overridden by mode)
+ANIMATION_POSITION=top-right      # top-right, top-left, center, etc.
+VISUALIZER_STYLE=toric            # toric, classic, minimalistic
+
+# Audio
+MIC_DEVICE=auto                   # auto or device index
+SAMPLE_RATE=16000
+
+# Debug
+DEBUG=false
 ```
 
 ## Usage
 
-### Starting the Application
+### Starting Dicton
 
-**Windows:**
-```cmd
-run.bat
-```
-
-**Linux (Service - recommended):**
 ```bash
-systemctl --user start dicton
-```
-
-**Linux/macOS (Command Line):**
-```bash
-cd /path/to/dicton
-source venv/bin/activate  # or: venv\Scripts\activate on Windows
+# Run directly
 dicton
+
+# Or as a systemd service
+systemctl --user start dicton
+systemctl --user enable dicton  # Auto-start on login
 ```
 
-### Recording Workflow
+### Dictation Workflow
 
-1. Start the application
-2. Press `Alt+G` to **start recording** (visualizer appears)
-3. Speak clearly into your microphone
-4. Press `Alt+G` again to **stop recording**
-5. Wait briefly for transcription
-6. Text appears at your cursor position!
+1. **Position cursor** where you want text inserted
+2. **Hold FN** and speak (push-to-talk)
+3. **Release FN** to transcribe and insert text
 
-| Action | Result |
-|--------|--------|
-| Press `Alt+G` | Start recording (visualizer shows) |
-| Press `Alt+G` again | Stop recording, transcribe, insert text |
-| `Ctrl+C` | Quit the application |
+Or use **double-tap** for longer recordings:
+1. **Tap FN twice** to start recording (ring appears)
+2. Speak your content
+3. **Tap FN** again to stop and transcribe
 
-## Configuration
+### Translation Mode
 
-Edit the `.env` file to customize:
+1. **Hold FN + Ctrl** and speak in any language
+2. **Release** to get English translation
 
-```bash
-# ElevenLabs API (required)
-ELEVENLABS_API_KEY=your_elevenlabs_key_here
+### LLM Reformulation
 
-# ElevenLabs STT model
-ELEVENLABS_MODEL=scribe_v1
-
-# Keyboard shortcut
-HOTKEY_MODIFIER=alt    # Options: alt, ctrl
-HOTKEY_KEY=g           # Any key
-
-# Language: auto, en, fr, de, es, etc. (ISO-639-1 codes)
-# Set to "auto" for automatic language detection
-LANGUAGE=auto
-
-# Microphone: auto or device index number
-# Run with DEBUG=true to see available devices
-MIC_DEVICE=auto
-
-# Debug output
-DEBUG=false
-```
-
-### Getting Your API Key
-
-1. Sign up at [ElevenLabs](https://elevenlabs.io/)
-2. Go to [API Settings](https://elevenlabs.io/app/settings/api-keys)
-3. Create a new API key
-4. Add it to your `.env` file
-
-## Project Structure
-
-```
-dicton/
-├── src/dicton/                      # Main package
-│   ├── __init__.py                  # Package exports
-│   ├── __main__.py                  # python -m dicton entry
-│   ├── main.py                      # Main application entry point
-│   ├── config.py                    # Configuration management
-│   ├── platform_utils.py            # Cross-platform detection
-│   ├── speech_recognition_engine.py # ElevenLabs STT integration
-│   ├── keyboard_handler.py          # Hotkey detection and text insertion
-│   ├── visualizer.py                # Circular audio visualizer (pygame)
-│   └── ui_feedback.py               # Desktop notifications
-├── tests/                           # Test suite
-│   ├── test_config.py               # Config tests
-│   ├── test_platform.py             # Platform detection tests
-│   └── test_hotkey.py               # Hotkey parsing tests
-├── scripts/                         # Platform installers
-├── .github/workflows/               # CI/CD pipelines
-├── pyproject.toml                   # Package configuration
-├── .env.example                     # Configuration template
-├── install.sh                       # Linux installer
-├── install.bat                      # Windows installer
-├── run.sh / run.bat                 # Platform launchers
-└── README.md                        # This file
-```
-
-## Dependencies
-
-Core dependencies (from `pyproject.toml`):
-
-| Package | Purpose |
-|---------|---------|
-| `elevenlabs` | Speech-to-text API client |
-| `pyaudio` | Audio capture |
-| `pynput` | Keyboard hotkey detection |
-| `pygame` | Audio visualizer |
-| `python-dotenv` | Environment configuration |
-| `numpy` | Audio processing |
-| `plyer` | Cross-platform notifications |
-| `pyautogui` | Cross-platform text insertion (Windows) |
-
-## Platform-Specific Notes
-
-### Windows
-- Text insertion uses `pyautogui` (with `pynput` fallback)
-- Notifications use Windows Toast via `plyer`
-- No admin rights required for normal operation
-
-### Linux
-- Text insertion uses `xdotool` (with `pynput` fallback)
-- Notifications use `notify-send` (with `plyer` fallback)
-- X11 required for visualizer window positioning
-- Wayland support is limited
-
-### macOS
-- Text insertion uses `pynput`
-- Notifications use native AppleScript
-- May require accessibility permissions for keyboard control
+1. **Hold FN + Alt** and speak naturally
+2. **Release** to get cleaned-up text (removes fillers, fixes grammar)
 
 ## Service Management (Linux)
 
 ```bash
-# Start the service
+# Start/stop service
 systemctl --user start dicton
-
-# Stop the service
 systemctl --user stop dicton
 
-# Enable auto-start on login
+# Enable auto-start
 systemctl --user enable dicton
-
-# Disable auto-start
-systemctl --user disable dicton
-
-# View status
-systemctl --user status dicton
 
 # View logs
 journalctl --user -u dicton -f
+
+# Check status
+systemctl --user status dicton
 ```
 
 ## Troubleshooting
 
-### No Microphone Detected
+### FN Key Not Detected
 
-**Linux:**
 ```bash
-# List available audio devices
-arecord -l
+# Check if user is in input group
+groups | grep input
 
-# Or check with PulseAudio
+# If not, add and re-login
+sudo usermod -aG input $USER
+```
+
+### No Audio Captured
+
+```bash
+# List audio devices
+arecord -l
 pactl list sources short
 
 # Set specific device in .env
 MIC_DEVICE=1
 ```
 
-**Windows:**
-- Check Windows Sound Settings > Recording devices
-- Set `MIC_DEVICE=auto` or specific device index in `.env`
+### Text Not Inserting
+
+```bash
+# Ensure xdotool is installed
+which xdotool
+
+# For Wayland, ensure XWayland is running
+echo $XDG_SESSION_TYPE
+```
 
 ### Visualizer Not Showing
 
-- Linux: Ensure X11 is running (not Wayland): `echo $XDG_SESSION_TYPE`
+- Ensure X11/XWayland is available
 - Check pygame installation: `pip show pygame`
-- Try running with `DEBUG=true` for more info
+- Try: `VISUALIZER_STYLE=terminal` for terminal-based feedback
 
-### Keyboard Shortcuts Not Working
+## Project Structure
 
-- Linux: Ensure you're running X11 (not Wayland)
-- Check if another application uses `Alt+T`
-- Try a different hotkey in `.env`
-- Windows: Run as administrator if needed
-
-### Text Not Inserting (Windows)
-
-- Ensure `pyautogui` is installed: `pip install pyautogui`
-- Some applications may block automated input
-- Try clicking in the target text field first
-
-### Permission Denied for Input (Linux)
-
-```bash
-# Add user to input group
-sudo usermod -aG input $USER
-# Log out and back in
+```
+dicton/
+├── src/dicton/
+│   ├── main.py                    # Application entry point
+│   ├── config.py                  # Configuration management
+│   ├── fn_key_handler.py          # FN key capture via evdev
+│   ├── speech_recognition_engine.py # ElevenLabs STT
+│   ├── llm_processor.py           # Gemini LLM integration
+│   ├── keyboard_handler.py        # Text insertion (xdotool)
+│   ├── visualizer.py              # Toric ring visualizer
+│   ├── selection_handler.py       # X11/Wayland selection
+│   └── processing_mode.py         # Mode definitions
+├── install.sh                     # Linux installer
+├── pyproject.toml                 # Package configuration
+└── README.md
 ```
 
-### Service Won't Start (Linux)
+## Dependencies
 
-```bash
-# Check logs
-journalctl --user -u dicton -n 50
-
-# Verify display is set
-echo $DISPLAY  # Should be :0 or :1
-```
-
-### ALSA/JACK Warnings
-
-These are harmless! PyAudio scans multiple backends. The warnings are suppressed automatically.
+| Package | Purpose |
+|---------|---------|
+| `elevenlabs` | Speech-to-text API |
+| `google-genai` | Gemini LLM API |
+| `evdev` | FN key capture (Linux) |
+| `pyaudio` | Audio capture |
+| `pygame` | Audio visualizer |
+| `numpy` | Audio processing |
+| `python-dotenv` | Configuration |
 
 ## Uninstall
 
-**Windows:**
-```cmd
-REM Delete the project folder
-rmdir /s /q dicton
-```
-
-**Linux (Local installation):**
 ```bash
+# System-wide installation
+sudo ./install.sh uninstall
+
+# User service
 systemctl --user stop dicton
 systemctl --user disable dicton
 rm ~/.config/systemd/user/dicton.service
-systemctl --user daemon-reload
-```
-
-**Linux (System-wide installation):**
-```bash
-sudo ./install.sh uninstall
+pip uninstall dicton
 ```
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT License - feel free to use this project however you'd like!
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- [ElevenLabs](https://elevenlabs.io/) for the speech-to-text API
-- [pynput](https://github.com/moses-palmer/pynput) for keyboard handling
-- [PyAudio](https://people.csail.mit.edu/hubert/pyaudio/) for audio capture
-- [Pygame](https://www.pygame.org/) for the visualizer
-- [plyer](https://github.com/kivy/plyer) for cross-platform notifications
-
-## Tips
-
-- Speak clearly and at a normal pace for best results
-- The visualizer shows when audio is being captured
-- Works best in quiet environments
-- The first transcription may be slightly slower (API warmup)
-- Keep recordings under 30 seconds for faster processing
+- [ElevenLabs](https://elevenlabs.io/) - Speech-to-text API
+- [Google Gemini](https://ai.google.dev/) - LLM for text processing
+- [Flexoki](https://github.com/kepano/flexoki) - Color palette for mode indicators
