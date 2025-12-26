@@ -31,6 +31,7 @@ class Dicton:
         self._shutdown_event = threading.Event()
         self._current_mode = ProcessingMode.BASIC
         self._visualizer = None
+        self._selected_text = None  # For Act on Text mode
 
         # FN key handler (Linux only, requires evdev)
         self._fn_handler = None
@@ -74,6 +75,16 @@ class Dicton:
             return
 
         self._current_mode = mode
+        self._selected_text = None  # Reset selected text
+
+        # For Act on Text, capture selection BEFORE starting recording
+        if mode == ProcessingMode.ACT_ON_TEXT:
+            selected = self._capture_selection_for_act_on_text()
+            if not selected:
+                return  # Already notified user, don't start recording
+            self._selected_text = selected
+            print(f"📋 Selected: {selected[:50]}..." if len(selected) > 50 else f"📋 Selected: {selected}")
+
         self.recording = True
 
         # Update visualizer color based on mode
@@ -135,15 +146,17 @@ class Dicton:
             # Start latency tracking session
             tracker.start_session()
 
-            # For Act on Text, check selection first
+            # For Act on Text, use pre-captured selection
             selected_text = None
             if mode == ProcessingMode.ACT_ON_TEXT:
-                selected_text = self._get_selection_for_act_on_text()
+                selected_text = self._selected_text
                 if not selected_text:
+                    # This shouldn't happen - selection is checked before recording starts
+                    print("⚠ No selection captured")
                     tracker.end_session()
-                    return  # Already notified user
+                    return
 
-            notify(f"🎤 {mode_name}", "Press FN to stop")
+            notify(f"🎤 {mode_name}", "Speak your instruction..." if mode == ProcessingMode.ACT_ON_TEXT else "Press FN to stop")
 
             # Record until stopped
             with tracker.measure("audio_capture", mode=mode.name):
@@ -190,30 +203,29 @@ class Dicton:
         finally:
             self.recording = False
 
-    def _get_selection_for_act_on_text(self) -> str | None:
-        """Get selected text for Act on Text mode"""
+    def _capture_selection_for_act_on_text(self) -> str | None:
+        """Capture selected text for Act on Text mode (called before recording starts)"""
         try:
             from .selection_handler import get_primary_selection, has_selection
+            from .platform_utils import IS_WAYLAND
 
             if not has_selection():
                 print("⚠ No text selected")
-                notify("⚠ No Selection", "Highlight text first")
-                self.recording = False
+                notify("⚠ No Selection", "Highlight text first, then press FN+Shift")
                 return None
 
             selected = get_primary_selection()
             if not selected:
-                print("⚠ Could not read selection")
-                notify("⚠ Selection Error", "Try selecting again")
-                self.recording = False
+                tool_hint = "wl-clipboard" if IS_WAYLAND else "xclip"
+                print(f"⚠ Could not read selection (install {tool_hint})")
+                notify("⚠ Selection Error", f"Install {tool_hint}")
                 return None
 
             return selected
 
-        except ImportError:
-            print("⚠ Selection handler not available")
-            notify("⚠ Not Available", "Install xclip")
-            self.recording = False
+        except ImportError as e:
+            print(f"⚠ Selection handler not available: {e}")
+            notify("⚠ Not Available", "Install xclip or wl-clipboard")
             return None
 
     def _process_text(

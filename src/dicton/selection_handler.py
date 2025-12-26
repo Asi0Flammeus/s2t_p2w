@@ -1,30 +1,77 @@
-"""Selection handler for Dicton - Read X11 PRIMARY selection
+"""Selection handler for Dicton - Read PRIMARY selection
 
-This module provides access to the X11 PRIMARY selection (highlighted text)
-without requiring Ctrl+C. Uses xclip for reliable cross-toolkit support.
+This module provides access to the PRIMARY selection (highlighted text)
+without requiring Ctrl+C. Supports both X11 (xclip) and Wayland (wl-paste).
 """
 
 import subprocess
 
 from .config import config
-from .platform_utils import IS_LINUX
+from .platform_utils import IS_LINUX, IS_WAYLAND, IS_X11
 
 
 def get_primary_selection() -> str | None:
-    """Get the currently selected text from X11 PRIMARY selection.
+    """Get the currently selected text from PRIMARY selection.
 
     On X11, when you highlight text with the mouse, it's automatically
-    copied to the PRIMARY selection. This function reads that selection
-    without disturbing the clipboard.
+    copied to the PRIMARY selection. On Wayland, uses wl-paste.
 
     Returns:
         The selected text, or None if nothing is selected or on error.
     """
     if not IS_LINUX:
         if config.DEBUG:
-            print("PRIMARY selection only available on Linux/X11")
+            print("PRIMARY selection only available on Linux")
         return None
 
+    # Try Wayland first if detected
+    if IS_WAYLAND:
+        result = _get_selection_wayland()
+        if result is not None:
+            return result
+        # Fall through to X11 in case of XWayland
+
+    # Try X11 (works on X11 and XWayland)
+    if IS_X11 or not IS_WAYLAND:
+        result = _get_selection_x11()
+        if result is not None:
+            return result
+
+    return None
+
+
+def _get_selection_wayland() -> str | None:
+    """Get selection using wl-paste (Wayland)."""
+    try:
+        # wl-paste -p reads PRIMARY selection
+        result = subprocess.run(
+            ["wl-paste", "-p", "-n"],  # -p = primary, -n = no newline
+            capture_output=True,
+            text=True,
+            timeout=2.0,
+        )
+
+        if result.returncode == 0 and result.stdout:
+            return result.stdout.strip()
+
+        return None
+
+    except FileNotFoundError:
+        if config.DEBUG:
+            print("wl-paste not found. Install with: sudo apt install wl-clipboard")
+        return None
+    except subprocess.TimeoutExpired:
+        if config.DEBUG:
+            print("wl-paste timed out")
+        return None
+    except Exception as e:
+        if config.DEBUG:
+            print(f"wl-paste error: {e}")
+        return None
+
+
+def _get_selection_x11() -> str | None:
+    """Get selection using xclip (X11)."""
     try:
         # xclip -selection primary -o reads PRIMARY selection
         result = subprocess.run(
