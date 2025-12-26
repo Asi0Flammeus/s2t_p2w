@@ -98,7 +98,8 @@ class Config:
     # HOTKEY_BASE: "fn" for FN key (XF86WakeUp), or "alt+g" for legacy
     HOTKEY_BASE = os.getenv("HOTKEY_BASE", "fn")
     # Hold threshold in ms - press longer than this triggers push-to-talk
-    HOTKEY_HOLD_THRESHOLD_MS = int(os.getenv("HOTKEY_HOLD_THRESHOLD_MS", "200"))
+    # Lower = more responsive PTT, higher = better tap detection
+    HOTKEY_HOLD_THRESHOLD_MS = int(os.getenv("HOTKEY_HOLD_THRESHOLD_MS", "100"))
     # Double-tap window in ms - second press within this triggers toggle mode
     HOTKEY_DOUBLE_TAP_WINDOW_MS = int(os.getenv("HOTKEY_DOUBLE_TAP_WINDOW_MS", "300"))
 

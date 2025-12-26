@@ -2,6 +2,11 @@
 
 This module provides FN key capture on Linux using evdev, which can detect
 special keys like XF86WakeUp that pynput may not support directly.
+
+Immediate Start Mode:
+    Recording starts INSTANTLY on key press for zero-latency PTT.
+    If released quickly (tap), recording is cancelled.
+    Double-tap enters toggle mode (locked recording).
 """
 
 import threading
@@ -30,8 +35,7 @@ class HotkeyState(Enum):
     """State machine states for FN key detection"""
 
     IDLE = auto()
-    KEY_DOWN = auto()  # Key pressed, waiting to determine hold vs tap
-    RECORDING_PTT = auto()  # Push-to-talk mode (hold)
+    RECORDING_PTT = auto()  # Push-to-talk mode (recording active)
     WAITING_DOUBLE = auto()  # First tap released, waiting for second
     RECORDING_TOGGLE = auto()  # Toggle mode (double-tap locked)
 
@@ -39,29 +43,31 @@ class HotkeyState(Enum):
 class FnKeyHandler:
     """Handle FN key (XF86WakeUp) with push-to-talk and toggle modes
 
-    State Machine:
-        IDLE + key_down → KEY_DOWN (start timer)
-        KEY_DOWN + hold > threshold → RECORDING_PTT (start recording)
-        KEY_DOWN + key_up < threshold → WAITING_DOUBLE (wait for second tap)
-        RECORDING_PTT + key_up → IDLE (stop, process, output)
-        WAITING_DOUBLE + key_down < window → RECORDING_TOGGLE (lock recording)
+    Immediate Start State Machine (zero-latency PTT):
+        IDLE + key_down → RECORDING_PTT (immediately start recording)
+        RECORDING_PTT + key_up < threshold → WAITING_DOUBLE (cancel, wait for double-tap)
+        RECORDING_PTT + key_up >= threshold → IDLE (stop recording, process)
+        WAITING_DOUBLE + key_down < window → RECORDING_TOGGLE (start toggle recording)
         WAITING_DOUBLE + timeout → IDLE (no action)
-        RECORDING_TOGGLE + double_tap → IDLE (stop, process, output)
+        RECORDING_TOGGLE + tap → IDLE (stop recording, process)
     """
 
     def __init__(
         self,
         on_start_recording: Callable[[ProcessingMode], None] | None = None,
         on_stop_recording: Callable[[], None] | None = None,
+        on_cancel_recording: Callable[[], None] | None = None,
     ):
         """Initialize FN key handler.
 
         Args:
             on_start_recording: Callback when recording starts, receives the ProcessingMode.
-            on_stop_recording: Callback when recording stops.
+            on_stop_recording: Callback when recording stops (will process audio).
+            on_cancel_recording: Callback when recording is cancelled (tap detected, discard audio).
         """
         self.on_start_recording = on_start_recording
         self.on_stop_recording = on_stop_recording
+        self.on_cancel_recording = on_cancel_recording
 
         # State machine
         self._state = HotkeyState.IDLE
@@ -242,17 +248,16 @@ class FnKeyHandler:
             return ProcessingMode.BASIC
 
     def _on_fn_key_down(self):
-        """Handle FN key press"""
+        """Handle FN key press - IMMEDIATE START for zero-latency PTT"""
         now = time.time()
 
         with self._state_lock:
             if self._state == HotkeyState.IDLE:
+                # IMMEDIATE START: Begin recording instantly
                 self._key_down_time = now
-                self._state = HotkeyState.KEY_DOWN
-                # Capture mode at key press (modifiers determine mode)
                 self._current_mode = self._detect_mode()
-                # Start timer to check for hold
-                self._start_hold_timer()
+                self._state = HotkeyState.RECORDING_PTT
+                self._trigger_start_recording()
 
             elif self._state == HotkeyState.WAITING_DOUBLE:
                 # Second tap within window - enter toggle mode
@@ -260,15 +265,14 @@ class FnKeyHandler:
                     self._state = HotkeyState.RECORDING_TOGGLE
                     self._trigger_start_recording()
                 else:
-                    # Window expired, treat as new press
+                    # Window expired, treat as new PTT press
                     self._key_down_time = now
-                    self._state = HotkeyState.KEY_DOWN
-                    # Capture mode for new press
                     self._current_mode = self._detect_mode()
-                    self._start_hold_timer()
+                    self._state = HotkeyState.RECORDING_PTT
+                    self._trigger_start_recording()
 
             elif self._state == HotkeyState.RECORDING_TOGGLE:
-                # In toggle mode, key down starts the stop sequence
+                # In toggle mode, key down marks potential stop
                 self._key_down_time = now
 
     def _on_fn_key_up(self):
@@ -276,43 +280,27 @@ class FnKeyHandler:
         now = time.time()
 
         with self._state_lock:
-            if self._state == HotkeyState.KEY_DOWN:
+            if self._state == HotkeyState.RECORDING_PTT:
                 hold_duration = now - self._key_down_time
                 if hold_duration < self._hold_threshold:
-                    # Short press - wait for potential double-tap
+                    # Short press (tap) - CANCEL recording, wait for double-tap
                     self._key_up_time = now
                     self._state = HotkeyState.WAITING_DOUBLE
+                    self._trigger_cancel_recording()
                     self._start_double_tap_timer()
-                # If hold threshold passed, we're already in RECORDING_PTT
-
-            elif self._state == HotkeyState.RECORDING_PTT:
-                # Release during PTT - stop recording
-                self._state = HotkeyState.IDLE
-                self._trigger_stop_recording()
+                else:
+                    # Held long enough - stop recording normally (will process)
+                    self._state = HotkeyState.IDLE
+                    self._trigger_stop_recording()
 
             elif self._state == HotkeyState.RECORDING_TOGGLE:
-                # Check for double-tap to exit toggle mode
+                # Check for tap to exit toggle mode
                 hold_duration = now - self._key_down_time
                 if hold_duration < self._hold_threshold:
-                    # Quick tap while in toggle - check if it's a double-tap to stop
-                    if now - self._key_up_time < self._double_tap_window:
-                        self._state = HotkeyState.IDLE
-                        self._trigger_stop_recording()
+                    # Tap while in toggle - stop recording
+                    self._state = HotkeyState.IDLE
+                    self._trigger_stop_recording()
                 self._key_up_time = now
-
-    def _start_hold_timer(self):
-        """Start timer to detect hold gesture"""
-
-        def check_hold():
-            time.sleep(self._hold_threshold)
-            with self._state_lock:
-                if self._state == HotkeyState.KEY_DOWN:
-                    # Still holding - enter PTT mode
-                    self._state = HotkeyState.RECORDING_PTT
-                    self._trigger_start_recording()
-
-        self._timer_thread = threading.Thread(target=check_hold, daemon=True)
-        self._timer_thread.start()
 
     def _start_double_tap_timer(self):
         """Start timer for double-tap window"""
@@ -337,9 +325,14 @@ class FnKeyHandler:
             ).start()
 
     def _trigger_stop_recording(self):
-        """Trigger recording stop callback"""
+        """Trigger recording stop callback (will process audio)"""
         if self.on_stop_recording:
             threading.Thread(target=self.on_stop_recording, daemon=True).start()
+
+    def _trigger_cancel_recording(self):
+        """Trigger recording cancel callback (discard audio, tap detected)"""
+        if self.on_cancel_recording:
+            threading.Thread(target=self.on_cancel_recording, daemon=True).start()
 
     @property
     def state(self) -> HotkeyState:

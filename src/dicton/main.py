@@ -49,6 +49,7 @@ class Dicton:
             self._fn_handler = FnKeyHandler(
                 on_start_recording=self._on_start_recording,
                 on_stop_recording=self._on_stop_recording,
+                on_cancel_recording=self._on_cancel_recording,
             )
             return self._fn_handler.start()
         except ImportError:
@@ -84,12 +85,22 @@ class Dicton:
         self.record_thread.start()
 
     def _on_stop_recording(self):
-        """Stop recording"""
+        """Stop recording (will process audio)"""
         if not self.recording:
             return
 
         print("⏹ Stopping...")
         self.recognizer.stop()
+        self.recording = False
+
+    def _on_cancel_recording(self):
+        """Cancel recording (tap detected, discard audio)"""
+        if not self.recording:
+            return
+
+        if config.DEBUG:
+            print("⏹ Cancelled (tap)")
+        self.recognizer.cancel()
         self.recording = False
 
     def _update_visualizer_color(self, mode: ProcessingMode):

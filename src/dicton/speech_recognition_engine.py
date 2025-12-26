@@ -67,6 +67,7 @@ class SpeechRecognizer:
     def __init__(self):
         self.use_elevenlabs = False
         self.recording = False
+        self._cancelled = False  # Flag for immediate cancel (discard audio)
         self.input_device = None
         self.client = None
 
@@ -177,6 +178,7 @@ class SpeechRecognizer:
         viz = get_visualizer()
         stream = None
         frames = []
+        self._cancelled = False  # Reset cancel flag
 
         try:
             with suppress_stderr():
@@ -214,6 +216,10 @@ class SpeechRecognizer:
                 stream.stop_stream()
                 stream.close()
 
+        # Check if recording was cancelled (tap detected)
+        if self._cancelled:
+            return None
+
         if not frames:
             return None
 
@@ -224,7 +230,12 @@ class SpeechRecognizer:
         return audio_array
 
     def stop(self):
-        """Stop recording."""
+        """Stop recording (will process audio)."""
+        self.recording = False
+
+    def cancel(self):
+        """Cancel recording (discard audio, tap detected)."""
+        self._cancelled = True
         self.recording = False
 
     def transcribe(self, audio: np.ndarray) -> str | None:
