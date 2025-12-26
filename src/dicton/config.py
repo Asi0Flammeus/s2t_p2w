@@ -86,9 +86,17 @@ class Config:
     # ElevenLabs STT model
     ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "scribe_v1")
 
-    # Hotkey
+    # Hotkey (legacy modifier+key style)
     HOTKEY_MODIFIER = os.getenv("HOTKEY_MODIFIER", "alt")
     HOTKEY_KEY = os.getenv("HOTKEY_KEY", "g")
+
+    # FN Key hotkey settings (new Phase 1 system)
+    # HOTKEY_BASE: "fn" for FN key (XF86WakeUp), or "alt+g" for legacy
+    HOTKEY_BASE = os.getenv("HOTKEY_BASE", "fn")
+    # Hold threshold in ms - press longer than this triggers push-to-talk
+    HOTKEY_HOLD_THRESHOLD_MS = int(os.getenv("HOTKEY_HOLD_THRESHOLD_MS", "200"))
+    # Double-tap window in ms - second press within this triggers toggle mode
+    HOTKEY_DOUBLE_TAP_WINDOW_MS = int(os.getenv("HOTKEY_DOUBLE_TAP_WINDOW_MS", "300"))
 
     # Visualizer theme color (red, orange, yellow, green, cyan, blue, purple, magenta)
     THEME_COLOR = os.getenv("THEME_COLOR", "orange").lower()

@@ -48,6 +48,9 @@ vispy = [
 gtk = [
     "PyGObject>=3.42.0",
 ]
+fnkey = [
+    "evdev>=1.6.0",
+]
 xshape = [
     "python-xlib>=0.33",
 ]
@@ -63,7 +66,7 @@ dev = [
     "ruff>=0.1.0",
 ]
 all = [
-    "dicton[vispy,gtk,notifications,windows,dev]",
+    "dicton[vispy,gtk,fnkey,notifications,windows,dev]",
 ]
 
 [project.scripts]
