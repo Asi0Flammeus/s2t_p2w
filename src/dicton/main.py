@@ -447,8 +447,8 @@ Examples:
     parser.add_argument(
         "--config-port",
         type=int,
-        default=9876,
-        help="Port for config UI server (default: 9876)",
+        default=6873,
+        help="Port for config UI server (default: 6873)",
     )
 
     args = parser.parse_args()

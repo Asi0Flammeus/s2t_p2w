@@ -779,7 +779,23 @@ def create_app():
     return app
 
 
-def run_config_server(port: int = 9876, open_browser: bool = True) -> None:
+def find_available_port(start_port: int = 6873, max_attempts: int = 10) -> int:
+    """Find an available port starting from start_port."""
+    import socket
+
+    for offset in range(max_attempts):
+        port = start_port + offset
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+                return port
+        except OSError:
+            continue
+
+    raise RuntimeError(f"Could not find available port in range {start_port}-{start_port + max_attempts}")
+
+
+def run_config_server(port: int = 6873, open_browser: bool = True) -> None:
     """Run the configuration server."""
     try:
         import uvicorn
@@ -788,16 +804,25 @@ def run_config_server(port: int = 9876, open_browser: bool = True) -> None:
         print("Install with: pip install dicton[configui]")
         return
 
+    # Find available port if requested port is in use
+    try:
+        actual_port = find_available_port(port)
+        if actual_port != port:
+            print(f"Port {port} in use, using {actual_port}")
+    except RuntimeError as e:
+        print(f"Error: {e}")
+        return
+
     app = create_app()
 
     print(f"\n{'='*50}")
     print("Dicton Configuration UI")
     print(f"{'='*50}")
-    print(f"Open: http://localhost:{port}")
+    print(f"Open: http://localhost:{actual_port}")
     print("Press Ctrl+C to stop")
     print(f"{'='*50}\n")
 
     if open_browser:
-        Timer(1.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+        Timer(1.0, lambda: webbrowser.open(f"http://localhost:{actual_port}")).start()
 
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=actual_port, log_level="warning")
