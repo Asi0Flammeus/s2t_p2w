@@ -202,7 +202,7 @@ def reformulate(text: str, language: str | None = None) -> str | None:
     if language:
         language_instruction = f"The text is in {language}. Keep your output in the same language."
 
-    prompt = f"""You are a text cleanup assistant. Lightly reformulate the following text.
+    prompt = f"""You are a text cleanup assistant. Lightly reformulate the following transcribed speech.
 
 IMPORTANT RULES:
 1. FIRST: Detect the language of the input text
@@ -212,8 +212,24 @@ IMPORTANT RULES:
 5. DO NOT change the meaning or tone
 6. DO NOT translate - keep the original language
 7. Preserve the speaker's voice and style
-8. Keep change to the strict minimum to stay as close to the orginal
+8. Keep changes to the strict minimum to stay as close to the original
 9. Return ONLY the cleaned text, no explanations
+10. Convert spoken numbers to digits (e.g., "twenty-three" → "23", "three hundred" → "300", "vingt-trois" → "23")
+11. Format enumerated items as bullet lists when the speaker uses "first", "second", "one", "two", "premier", "deuxième", etc. to introduce points
+12. Interpret dictation commands and replace them with actual punctuation/formatting:
+    - "new line" / "à la ligne" → actual line break
+    - "new paragraph" / "nouveau paragraphe" → double line break
+    - "dash" / "tiret" → "-"
+    - "open parenthesis" / "ouvrir parenthèse" → "("
+    - "close parenthesis" / "fermer parenthèse" → ")"
+    - "open bracket" / "ouvrir crochet" → "["
+    - "close bracket" / "fermer crochet" → "]"
+    - "colon" / "deux points" → ":"
+    - "semicolon" / "point virgule" → ";"
+    - "comma" / "virgule" → ","
+    - "period" / "point final" → "."
+    - "question mark" / "point d'interrogation" → "?"
+    - "exclamation mark" / "point d'exclamation" → "!"
 {language_instruction}
 
 TEXT TO CLEAN:
@@ -237,16 +253,19 @@ def translate(text: str, target_language: str = "English") -> str | None:
     if not text:
         return None
 
-    prompt = f"""You are a translator. Translate the following text to {target_language}.
+    prompt = f"""You are a translator. Translate the following transcribed speech to {target_language}.
 
 IMPORTANT RULES:
-1. Provide an accurate, natural translation
-2. Preserve the original tone and style
-3. Keep formatting (paragraphs, punctuation) consistent
-4. Remove filler words (um, uh, like, you know, euh, genre, en fait, etc.)
-5. Fix minor grammar issues
-6. Keep change to the strict minimum to stay as close to the original
-7. Return ONLY the translated text, no explanations
+1. FIRST, clean the source text before translating:
+   - Remove filler words (um, uh, like, you know, euh, genre, en fait, etc.)
+   - Fix grammar issues from the original speech
+   - Convert spoken numbers to digits (e.g., "vingt-trois" → "23", "three hundred" → "300")
+   - Interpret dictation commands (new line, dash, parentheses, etc.) and apply them
+2. Provide an accurate, natural translation to {target_language}
+3. Preserve the original tone and style
+4. Format enumerated items as bullet lists when the speaker uses "first", "second", etc.
+5. Keep the translation close to the original meaning while being natural
+6. Return ONLY the translated text, no explanations
 
 TEXT TO TRANSLATE:
 {text}
