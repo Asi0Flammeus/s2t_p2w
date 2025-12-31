@@ -216,7 +216,8 @@ IMPORTANT RULES:
 9. Return ONLY the cleaned text, no explanations
 10. Convert spoken numbers to digits (e.g., "twenty-three" → "23", "three hundred" → "300", "vingt-trois" → "23")
 11. Format enumerated items as lists when the speaker introduces points sequentially. Use numbered lists (1. 2. 3.) when speaker uses ordinals like "first", "second", "premier", "deuxième", or bullet points for other enumerations
-12. Interpret dictation commands and replace them with actual punctuation/formatting:
+12. If the input is empty, contains only static noise, or has no meaningful speech content, output exactly "None" with nothing else
+13. Interpret dictation commands and replace them with actual punctuation/formatting:
     - "new line" / "à la ligne" → actual line break
     - "new paragraph" / "nouveau paragraphe" → double line break
     - "dash" / "tiret" → "-"
@@ -237,7 +238,10 @@ TEXT TO CLEAN:
 
 CLEANED TEXT (same language as input):"""
 
-    return _call_llm_with_fallback(prompt)
+    result = _call_llm_with_fallback(prompt)
+    if result and result.strip().lower() == "none":
+        return None
+    return result
 
 
 def translate(text: str, target_language: str = "English") -> str | None:
@@ -266,13 +270,17 @@ IMPORTANT RULES:
 4. Format enumerated items as lists: numbered (1. 2. 3.) for ordinals, bullet points otherwise
 5. Keep the translation close to the original meaning while being natural
 6. Return ONLY the translated text, no explanations
+7. If the input is empty, contains only static noise, or has no meaningful speech content, output exactly "None" with nothing else
 
 TEXT TO TRANSLATE:
 {text}
 
 TRANSLATION:"""
 
-    return _call_llm_with_fallback(prompt)
+    result = _call_llm_with_fallback(prompt)
+    if result and result.strip().lower() == "none":
+        return None
+    return result
 
 
 def is_available() -> bool:
