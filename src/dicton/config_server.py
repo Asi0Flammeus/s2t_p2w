@@ -355,6 +355,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div class="tabs">
             <button class="tab active" onclick="switchTab('test')">Latency Test</button>
             <button class="tab" onclick="switchTab('config')">Configuration</button>
+            <button class="tab" onclick="switchTab('hotkeys')">Hotkeys</button>
             <button class="tab" onclick="switchTab('dictionary')">Dictionary</button>
         </div>
 
@@ -508,29 +509,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
 
             <div class="section">
-                <div class="section-title">Hotkey Settings</div>
-                <div class="form-group">
-                    <label>Base Hotkey</label>
-                    <select id="hotkey_base">
-                        <option value="fn">FN Key</option>
-                        <option value="alt+g">Alt+G (legacy)</option>
-                    </select>
-                </div>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Hold Threshold (ms)</label>
-                        <input type="text" id="hotkey_hold_threshold_ms" placeholder="100">
-                        <div class="hint">Press longer = push-to-talk</div>
-                    </div>
-                    <div class="form-group">
-                        <label>Double-tap Window (ms)</label>
-                        <input type="text" id="hotkey_double_tap_window_ms" placeholder="300">
-                        <div class="hint">Second press within = toggle</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
                 <div class="section-title">Processing</div>
                 <div class="grid-2">
                     <div class="form-group">
@@ -575,6 +553,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <label class="checkbox-label">Enable Debug Mode</label>
                 </div>
                 <div class="hint">Show latency info and detailed logs</div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
+                <button class="btn btn-secondary" onclick="loadConfig()">Reset to Current</button>
+            </div>
+        </div>
+
+        <!-- Hotkeys Tab -->
+        <div id="tab-hotkeys" class="tab-content">
+            <div class="section">
+                <div class="section-title">Hotkey Settings</div>
+                <div class="form-group">
+                    <label>Base Hotkey</label>
+                    <select id="hotkey_base">
+                        <option value="fn">FN Key</option>
+                        <option value="alt+g">Alt+G (legacy)</option>
+                    </select>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Hold Threshold (ms)</label>
+                        <input type="text" id="hotkey_hold_threshold_ms" placeholder="100">
+                        <div class="hint">Press longer = push-to-talk</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Double-tap Window (ms)</label>
+                        <input type="text" id="hotkey_double_tap_window_ms" placeholder="300">
+                        <div class="hint">Second press within = toggle</div>
+                    </div>
+                </div>
             </div>
 
             <div class="btn-group">
