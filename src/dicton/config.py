@@ -133,6 +133,10 @@ class Config:
     # Activation delay in ms - wait before starting recording to distinguish from double-tap
     HOTKEY_ACTIVATION_DELAY_MS = int(os.getenv("HOTKEY_ACTIVATION_DELAY_MS", "50"))
 
+    # Secondary hotkey - alternative key that works like FN (for keyboards without KEY_WAKEUP)
+    # Options: escape, f1-f12, capslock, pause, insert, home, end, pageup, pagedown, none
+    SECONDARY_HOTKEY = os.getenv("SECONDARY_HOTKEY", "f1").lower()
+
     # Visualizer theme color (red, orange, yellow, green, cyan, blue, purple, magenta)
     THEME_COLOR = os.getenv("THEME_COLOR", "orange").lower()
 
