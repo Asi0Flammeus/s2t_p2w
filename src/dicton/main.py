@@ -11,6 +11,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 warnings.filterwarnings("ignore")
 
 from .config import config
+from .context_detector import ContextInfo, get_context_detector
 from .keyboard_handler import KeyboardHandler
 from .latency_tracker import get_latency_tracker
 from .platform_utils import IS_LINUX, IS_WINDOWS
@@ -32,6 +33,7 @@ class Dicton:
         self._current_mode = ProcessingMode.BASIC
         self._visualizer = None
         self._selected_text = None  # For Act on Text mode
+        self._current_context: ContextInfo | None = None  # Context at recording start
 
         # FN key handler (Linux only, requires evdev)
         self._fn_handler = None
@@ -82,6 +84,16 @@ class Dicton:
 
         self._current_mode = mode
         self._selected_text = None  # Reset selected text
+        self._current_context = None  # Reset context
+
+        # Detect context at recording start (not on every frame)
+        try:
+            detector = get_context_detector()
+            if detector:
+                self._current_context = detector.get_context()
+        except Exception as e:
+            if config.CONTEXT_DEBUG:
+                print(f"[Context] Detection failed: {e}")
 
         # For Act on Text, capture selection BEFORE starting recording
         if mode == ProcessingMode.ACT_ON_TEXT:
@@ -210,7 +222,9 @@ class Dicton:
 
             # Route to appropriate processor based on mode
             with tracker.measure("text_processing", mode=mode.name):
-                result = self._process_text(text, mode, selected_text)
+                result = self._process_text(
+                    text, mode, selected_text, context=self._current_context
+                )
 
             if result:
                 # Stop visualizer before outputting text
@@ -266,7 +280,11 @@ class Dicton:
             return None
 
     def _process_text(
-        self, text: str, mode: ProcessingMode, selected_text: str | None = None
+        self,
+        text: str,
+        mode: ProcessingMode,
+        selected_text: str | None = None,
+        context: ContextInfo | None = None,
     ) -> str | None:
         """Process transcribed text based on mode"""
 
@@ -280,7 +298,7 @@ class Dicton:
                 from . import llm_processor
 
                 if config.ENABLE_REFORMULATION and llm_processor.is_available():
-                    return llm_processor.reformulate(text)
+                    return llm_processor.reformulate(text, context=context)
             except ImportError:
                 pass
             # Fallback to local filler removal if LLM not available
@@ -298,24 +316,24 @@ class Dicton:
                 return text  # Fallback to raw text
 
             if mode == ProcessingMode.ACT_ON_TEXT and selected_text:
-                return llm_processor.act_on_text(selected_text, text)
+                return llm_processor.act_on_text(selected_text, text, context=context)
 
             elif mode == ProcessingMode.REFORMULATION:
                 # Check if LLM reformulation is enabled
                 if config.ENABLE_REFORMULATION:
-                    return llm_processor.reformulate(text)
+                    return llm_processor.reformulate(text, context=context)
                 else:
                     # Fallback to local filler removal only
                     return self._filter_fillers_local(text)
 
             elif mode == ProcessingMode.TRANSLATION:
-                return llm_processor.translate(text, "English")
+                return llm_processor.translate(text, "English", context=context)
 
             elif mode == ProcessingMode.TRANSLATE_REFORMAT:
                 # Translate first, then reformulate
-                translated = llm_processor.translate(text, "English")
+                translated = llm_processor.translate(text, "English", context=context)
                 if translated:
-                    return llm_processor.reformulate(translated)
+                    return llm_processor.reformulate(translated, context=context)
                 return None
 
         except ImportError:
