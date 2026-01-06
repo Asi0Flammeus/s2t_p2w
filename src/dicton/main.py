@@ -38,11 +38,17 @@ class Dicton:
         self._use_fn_key = False
 
     def _init_fn_handler(self) -> bool:
-        """Initialize FN key handler if available"""
+        """Initialize FN key handler if available.
+
+        Supports both FN key mode and custom hotkey mode (e.g., alt+g).
+        """
         if not IS_LINUX:
             return False
 
-        if config.HOTKEY_BASE.lower() != "fn":
+        hotkey_base = config.HOTKEY_BASE.lower()
+        # Only use FnKeyHandler for "fn" or "custom" modes
+        # Other values fall back to legacy pynput-based keyboard handler
+        if hotkey_base not in ("fn", "custom"):
             return False
 
         try:

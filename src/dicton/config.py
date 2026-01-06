@@ -129,8 +129,11 @@ class Config:
     HOTKEY_KEY = os.getenv("HOTKEY_KEY", "g")
 
     # FN Key hotkey settings (new Phase 1 system)
-    # HOTKEY_BASE: "fn" for FN key (XF86WakeUp), or "alt+g" for legacy
+    # HOTKEY_BASE: "fn" for FN key (XF86WakeUp), or "custom" for modifier+key combo
     HOTKEY_BASE = os.getenv("HOTKEY_BASE", "fn")
+    # Custom hotkey value: modifier+key combo (e.g., "alt+g", "ctrl+shift+d")
+    # Only used when HOTKEY_BASE is "custom"
+    CUSTOM_HOTKEY_VALUE = os.getenv("CUSTOM_HOTKEY_VALUE", "alt+g")
     # Hold threshold in ms - press longer than this triggers push-to-talk
     # Lower = more responsive PTT, higher = better tap detection
     HOTKEY_HOLD_THRESHOLD_MS = int(os.getenv("HOTKEY_HOLD_THRESHOLD_MS", "100"))

@@ -43,6 +43,33 @@ SECONDARY_HOTKEY_MAP = {
     "pagedown": 109, "pgdn": 109,
 }
 
+# Full key name to evdev keycode mapping (for custom hotkey parsing)
+KEY_NAME_MAP = {
+    # Letters
+    "a": 30, "b": 48, "c": 46, "d": 32, "e": 18, "f": 33, "g": 34, "h": 35,
+    "i": 23, "j": 36, "k": 37, "l": 38, "m": 50, "n": 49, "o": 24, "p": 25,
+    "q": 16, "r": 19, "s": 31, "t": 20, "u": 22, "v": 47, "w": 17, "x": 45,
+    "y": 21, "z": 44,
+    # Numbers
+    "0": 11, "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7, "7": 8, "8": 9, "9": 10,
+    # Special keys (include secondary hotkeys for completeness)
+    "escape": 1, "esc": 1,
+    "f1": 59, "f2": 60, "f3": 61, "f4": 62, "f5": 63, "f6": 64,
+    "f7": 65, "f8": 66, "f9": 67, "f10": 68, "f11": 87, "f12": 88,
+    "capslock": 58, "caps": 58,
+    "tab": 15, "space": 57, "enter": 28, "return": 28,
+    "backspace": 14, "delete": 111, "del": 111,
+    "insert": 110, "ins": 110,
+    "home": 102, "end": 107,
+    "pageup": 104, "pgup": 104, "pagedown": 109, "pgdn": 109,
+    "up": 103, "down": 108, "left": 105, "right": 106,
+    "pause": 119, "break": 119,
+    "grave": 41, "`": 41, "minus": 12, "-": 12, "equal": 13, "=": 13,
+    "bracketleft": 26, "[": 26, "bracketright": 27, "]": 27,
+    "backslash": 43, "\\": 43, "semicolon": 39, ";": 39, "apostrophe": 40, "'": 40,
+    "comma": 51, ",": 51, "period": 52, ".": 52, "slash": 53, "/": 53,
+}
+
 
 class HotkeyState(Enum):
     """State machine states for FN key detection"""
@@ -129,6 +156,15 @@ class FnKeyHandler:
         # Track if current recording was started via secondary hotkey (mode is locked)
         self._secondary_hotkey_active = False
 
+        # Custom hotkey support (e.g., "alt+g", "ctrl+shift+d")
+        # Parsed into: required modifiers + main key
+        self._custom_hotkey_enabled = False
+        self._custom_hotkey_keycode: int | None = None
+        self._custom_hotkey_requires_ctrl = False
+        self._custom_hotkey_requires_shift = False
+        self._custom_hotkey_requires_alt = False
+        self._parse_custom_hotkey()
+
     def _build_secondary_hotkeys_map(self):
         """Build mapping of secondary hotkey keycodes to their processing modes."""
         self._secondary_hotkeys = {}
@@ -151,6 +187,75 @@ class FnKeyHandler:
         keycode = SECONDARY_HOTKEY_MAP.get(config.SECONDARY_HOTKEY_ACT_ON_TEXT)
         if keycode:
             self._secondary_hotkeys[keycode] = ProcessingMode.ACT_ON_TEXT
+
+    def _parse_custom_hotkey(self):
+        """Parse CUSTOM_HOTKEY_VALUE into required modifiers and main key.
+
+        Format: modifier+modifier+key (e.g., "alt+g", "ctrl+shift+d")
+        Supported modifiers: ctrl, shift, alt
+        """
+        if config.HOTKEY_BASE.lower() == "fn":
+            # Using FN key, custom hotkey not active
+            self._custom_hotkey_enabled = False
+            return
+
+        hotkey_value = config.CUSTOM_HOTKEY_VALUE.lower().strip()
+        if not hotkey_value:
+            self._custom_hotkey_enabled = False
+            return
+
+        # Split by + to get modifiers and main key
+        parts = [p.strip() for p in hotkey_value.split("+")]
+        if not parts:
+            self._custom_hotkey_enabled = False
+            return
+
+        # Parse modifiers and main key
+        # Last part is the main key, rest are modifiers
+        main_key = parts[-1]
+        modifiers = parts[:-1]
+
+        # Look up main key keycode
+        keycode = KEY_NAME_MAP.get(main_key)
+        if keycode is None:
+            print(f"⚠ Unknown key in custom hotkey: '{main_key}'")
+            self._custom_hotkey_enabled = False
+            return
+
+        # Parse modifiers
+        requires_ctrl = False
+        requires_shift = False
+        requires_alt = False
+
+        for mod in modifiers:
+            if mod in ("ctrl", "control"):
+                requires_ctrl = True
+            elif mod in ("shift",):
+                requires_shift = True
+            elif mod in ("alt",):
+                requires_alt = True
+            else:
+                print(f"⚠ Unknown modifier in custom hotkey: '{mod}'")
+
+        # Store parsed values
+        self._custom_hotkey_enabled = True
+        self._custom_hotkey_keycode = keycode
+        self._custom_hotkey_requires_ctrl = requires_ctrl
+        self._custom_hotkey_requires_shift = requires_shift
+        self._custom_hotkey_requires_alt = requires_alt
+
+        if config.DEBUG:
+            print(f"Custom hotkey parsed: key={main_key}({keycode}), ctrl={requires_ctrl}, shift={requires_shift}, alt={requires_alt}")
+
+    def _is_custom_hotkey_modifiers_pressed(self) -> bool:
+        """Check if the required modifiers for custom hotkey are currently pressed."""
+        if self._custom_hotkey_requires_ctrl and not self._ctrl_pressed:
+            return False
+        if self._custom_hotkey_requires_shift and not self._shift_pressed:
+            return False
+        if self._custom_hotkey_requires_alt and not self._alt_pressed:
+            return False
+        return True
 
     def start(self):
         """Start the FN key listener"""
@@ -178,9 +283,15 @@ class FnKeyHandler:
         self._listener_thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._listener_thread.start()
 
-        # Log devices
-        if self._device:
+        # Log devices and configuration
+        if self._custom_hotkey_enabled:
+            # Custom hotkey mode (e.g., alt+g)
+            print(f"Custom hotkey enabled: {config.CUSTOM_HOTKEY_VALUE}")
+            if self._device:
+                print(f"Listening on device: {self._device.name}")
+        elif self._device:
             print(f"FN key handler started on device: {self._device.name}")
+
         if self._secondary_hotkeys:
             for keycode, mode in self._secondary_hotkeys.items():
                 # Find the key name from the keycode
@@ -209,11 +320,11 @@ class FnKeyHandler:
             self._listener_thread.join(timeout=1.0)
 
     def _find_keyboard_devices(self):
-        """Find keyboard devices for FN key and secondary hotkey.
+        """Find keyboard devices for FN key, custom hotkey, and secondary hotkey.
 
         Returns:
             Tuple of (primary_device, secondary_devices):
-            - primary_device: Laptop keyboard for FN/KEY_WAKEUP
+            - primary_device: Laptop keyboard for FN/KEY_WAKEUP or custom hotkey
             - secondary_devices: List of ALL keyboards for secondary hotkey
         """
         try:
@@ -242,16 +353,32 @@ class FnKeyHandler:
             primary_device = None
             secondary_devices = []
 
+            # For custom hotkey mode, find any keyboard with the main key
+            if self._custom_hotkey_enabled and self._custom_hotkey_keycode:
+                for device in devices:
+                    if is_external_keyboard(device.name):
+                        continue
+                    caps = device.capabilities()
+                    if ecodes.EV_KEY in caps:
+                        keys = caps[ecodes.EV_KEY]
+                        # Must have the custom hotkey main key and modifier keys
+                        if self._custom_hotkey_keycode in keys and ecodes.KEY_A in keys:
+                            if config.DEBUG:
+                                print(f"Found keyboard for custom hotkey: {device.name}")
+                            primary_device = device
+                            break
+
             # Find primary device: laptop keyboard with KEY_WAKEUP (skip external)
-            for device in devices:
-                if is_external_keyboard(device.name):
-                    continue
-                caps = device.capabilities()
-                if ecodes.EV_KEY in caps:
-                    keys = caps[ecodes.EV_KEY]
-                    if KEY_WAKEUP in keys or 464 in keys:
-                        primary_device = device
-                        break
+            if not primary_device:
+                for device in devices:
+                    if is_external_keyboard(device.name):
+                        continue
+                    caps = device.capabilities()
+                    if ecodes.EV_KEY in caps:
+                        keys = caps[ecodes.EV_KEY]
+                        if KEY_WAKEUP in keys or 464 in keys:
+                            primary_device = device
+                            break
 
             # Find ALL keyboards that support any secondary hotkey
             if self._secondary_hotkeys:
@@ -337,6 +464,12 @@ class FnKeyHandler:
                         if device == self._device:
                             is_fn_key = event.code == KEY_WAKEUP or event.code == 464
 
+                        # Check if this is the custom hotkey main key
+                        is_custom_hotkey = (
+                            self._custom_hotkey_enabled
+                            and event.code == self._custom_hotkey_keycode
+                        )
+
                         # Check if this is a secondary hotkey (on any device)
                         secondary_mode = self._secondary_hotkeys.get(event.code)
 
@@ -347,6 +480,21 @@ class FnKeyHandler:
                                 self._on_fn_key_down()
                             elif event.value == 0:  # Key up
                                 self._on_fn_key_up()
+                        elif is_custom_hotkey:
+                            # Custom hotkey (e.g., alt+g, ctrl+shift+d)
+                            # Only trigger if required modifiers are held
+                            if event.value == 1:  # Key down
+                                if self._is_custom_hotkey_modifiers_pressed():
+                                    self._secondary_hotkey_active = False
+                                    # Custom hotkey always uses BASIC mode (toggle only)
+                                    self._current_mode = ProcessingMode.BASIC
+                                    self._on_custom_hotkey_down()
+                            elif event.value == 0:  # Key up
+                                # Only process key up if we're in a recording state
+                                # (to avoid processing releases for key presses that weren't triggered)
+                                if self._state in (HotkeyState.RECORDING_PTT, HotkeyState.RECORDING_TOGGLE,
+                                                   HotkeyState.WAITING_ACTIVATION, HotkeyState.WAITING_DOUBLE):
+                                    self._on_fn_key_up()
                         elif secondary_mode is not None:
                             # Secondary hotkey: use the specific mode for this key
                             if event.value == 1:  # Key down
@@ -397,6 +545,29 @@ class FnKeyHandler:
             return ProcessingMode.RAW
         else:
             return ProcessingMode.BASIC
+
+    def _on_custom_hotkey_down(self):
+        """Handle custom hotkey press (e.g., alt+g, ctrl+shift+d).
+
+        Custom hotkeys use toggle-only behavior:
+        - First press with modifiers held: Start recording
+        - Second press with modifiers held: Stop recording
+        """
+        now = time.time()
+
+        with self._state_lock:
+            if self._state == HotkeyState.IDLE:
+                self._key_down_time = now
+                # Custom hotkey uses toggle mode
+                self._state = HotkeyState.RECORDING_TOGGLE
+                self._toggle_first_release = True  # Ignore first release
+                self._trigger_start_recording()
+
+            elif self._state == HotkeyState.RECORDING_TOGGLE:
+                # In toggle mode, second key press stops recording
+                self._key_down_time = now
+                self._state = HotkeyState.IDLE
+                self._trigger_stop_recording()
 
     def _on_fn_key_down(self):
         """Handle FN key press with activation delay
