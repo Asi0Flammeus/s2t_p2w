@@ -218,6 +218,83 @@ journalctl --user -u dicton -f
 systemctl --user status dicton
 ```
 
+## Context-Aware Dictation
+
+Dicton can detect your active application context to adapt LLM prompts and typing behavior.
+
+### How It Works
+
+When you start recording, Dicton detects:
+- **Active window** (class, title)
+- **Widget focus** (text field, terminal, editor)
+- **Terminal context** (shell, tmux session, current directory)
+
+This context is matched against profiles that customize:
+- LLM prompt preambles (e.g., "User is writing Python code")
+- Typing speed (fast for messaging, slow for terminals)
+- Text formatting preferences
+
+### Configuration
+
+Enable/disable context detection via the dashboard's **Context** tab at `http://localhost:8765`.
+
+Custom profiles can be added to `~/.config/dicton/contexts.json`:
+
+```json
+{
+  "profiles": {
+    "my_editor": {
+      "match": {
+        "wm_class": ["my-custom-editor"],
+        "window_title_contains": ["project"]
+      },
+      "llm_preamble": "User is coding. Use technical vocabulary.",
+      "typing_speed": "fast"
+    }
+  }
+}
+```
+
+### Platform Requirements
+
+#### Linux (X11)
+Context detection works out of the box. Optional enhanced widget detection requires:
+```bash
+# Debian/Ubuntu
+sudo apt install python3-pyatspi at-spi2-core
+```
+
+#### Linux (Wayland/GNOME)
+GNOME requires a D-Bus extension for window detection:
+
+1. Install **[Focused Window D-Bus](https://extensions.gnome.org/extension/5592/focused-window-d-bus/)** from GNOME Extensions
+2. Or install **[Window Calls Extended](https://extensions.gnome.org/extension/4974/window-calls-extended/)**
+3. Enable the extension and restart Dicton
+
+Without the extension, context detection gracefully falls back to limited information.
+
+#### Linux (Wayland/Sway/Hyprland)
+Native support via compositor CLI tools (`swaymsg`, `hyprctl`). No additional setup required.
+
+#### Windows
+Context detection uses Windows UI Automation API:
+```powershell
+# Usually pre-installed on Windows 10/11
+# If missing, install:
+pip install pywin32 comtypes
+```
+
+### Debugging
+
+Enable context debug output:
+```bash
+CONTEXT_DEBUG=true dicton
+```
+
+This logs detected context and matched profiles to help troubleshoot detection issues.
+
+---
+
 ## Troubleshooting
 
 ### FN Key Not Detected
@@ -256,6 +333,45 @@ echo $XDG_SESSION_TYPE
 - Ensure X11/XWayland is available
 - Check pygame installation: `pip show pygame`
 - Try: `VISUALIZER_STYLE=terminal` for terminal-based feedback
+
+### Context Detection Not Working
+
+**GNOME/Wayland:**
+```bash
+# Check if extension is installed
+gnome-extensions list | grep -i focus
+# Should show: focused-window-d-bus@example.com or similar
+
+# If not installed, visit:
+# https://extensions.gnome.org/extension/5592/focused-window-d-bus/
+```
+
+**X11 (Widget Focus):**
+```bash
+# Install AT-SPI accessibility framework
+sudo apt install python3-pyatspi at-spi2-core
+
+# Verify AT-SPI is running
+dbus-send --session --print-reply \
+  --dest=org.a11y.Bus /org/a11y/bus \
+  org.a11y.Bus.GetAddress
+```
+
+**Windows:**
+```powershell
+# Verify pywin32 is installed
+pip show pywin32 comtypes
+
+# If missing:
+pip install pywin32 comtypes
+```
+
+**Debug context detection:**
+```bash
+# Enable verbose logging
+CONTEXT_DEBUG=true dicton
+# Look for "Context:" and "Profile:" lines in output
+```
 
 ## Project Structure
 
