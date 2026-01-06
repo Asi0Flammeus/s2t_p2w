@@ -191,6 +191,9 @@ class Config:
 
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
+    # Context detection - adapts LLM prompts and typing speed based on active app
+    CONTEXT_ENABLED = os.getenv("CONTEXT_ENABLED", "true").lower() == "true"
+
     # Context detection debug mode - logs detected context and matched profiles
     CONTEXT_DEBUG = os.getenv("CONTEXT_DEBUG", "false").lower() == "true"
 

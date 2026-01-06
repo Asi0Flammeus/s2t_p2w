@@ -258,6 +258,53 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             overflow-y: auto;
             margin-bottom: 1rem;
         }
+        /* Context Preview */
+        .context-preview {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid var(--ui-2);
+        }
+        .context-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--ui);
+        }
+        .context-item:last-child { border-bottom: none; }
+        .context-label {
+            font-size: 0.85rem;
+            color: var(--tx-2);
+        }
+        .context-value {
+            font-size: 0.85rem;
+            color: var(--tx);
+            font-family: monospace;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .profile-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .profile-chip {
+            display: inline-block;
+            padding: 0.4rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--tx-2);
+        }
+        .profile-chip.active {
+            background: rgba(218, 112, 44, 0.15);
+            border-color: var(--orange);
+            color: var(--orange);
+        }
         /* Latency Test Panel */
         .test-panel {
             text-align: center;
@@ -454,6 +501,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <button class="tab active" onclick="switchTab('test')">Latency Test</button>
             <button class="tab" onclick="switchTab('config')">Configuration</button>
             <button class="tab" onclick="switchTab('hotkeys')">Hotkeys</button>
+            <button class="tab" onclick="switchTab('context')">Context</button>
             <button class="tab" onclick="switchTab('dictionary')">Dictionary</button>
         </div>
 
@@ -754,6 +802,60 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
         </div>
 
+        <!-- Context Tab -->
+        <div id="tab-context" class="tab-content">
+            <div class="section">
+                <div class="section-title">Context Detection</div>
+                <div class="hint" style="margin-bottom: 1rem">Context detection adapts LLM prompts and typing speed based on the active application.</div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="context-enabled" onchange="toggleContextEnabled()">
+                    <label class="checkbox-label" for="context-enabled">Enable context detection</label>
+                </div>
+
+                <div class="form-group checkbox-group" style="margin-top: 0.5rem">
+                    <input type="checkbox" id="context-debug" onchange="toggleContextDebug()">
+                    <label class="checkbox-label" for="context-debug">Enable debug logging</label>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Current Context</div>
+                <div class="hint" style="margin-bottom: 1rem">Live preview of detected context (updates when you click Refresh).</div>
+
+                <div id="context-preview" class="context-preview">
+                    <div class="context-item">
+                        <span class="context-label">Application</span>
+                        <span id="ctx-app" class="context-value">--</span>
+                    </div>
+                    <div class="context-item">
+                        <span class="context-label">Window Title</span>
+                        <span id="ctx-title" class="context-value">--</span>
+                    </div>
+                    <div class="context-item">
+                        <span class="context-label">Window Class</span>
+                        <span id="ctx-class" class="context-value">--</span>
+                    </div>
+                    <div class="context-item">
+                        <span class="context-label">Matched Profile</span>
+                        <span id="ctx-profile" class="context-value">--</span>
+                    </div>
+                    <div class="context-item">
+                        <span class="context-label">Typing Speed</span>
+                        <span id="ctx-speed" class="context-value">--</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="refreshContext()" style="margin-top: 1rem">Refresh Context</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Available Profiles</div>
+                <div class="hint" style="margin-bottom: 1rem">Context profiles are defined in ~/.config/dicton/contexts.json</div>
+                <div id="profile-list" class="profile-list"></div>
+            </div>
+        </div>
+
         <!-- Dictionary Tab -->
         <div id="tab-dictionary" class="tab-content">
             <div class="section">
@@ -788,6 +890,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 currentConfig = await res.json();
                 populateForm(currentConfig);
                 await loadDictionary();
+                await loadContext();
             } catch (e) {
                 showStatus('Failed to load configuration', 'error');
             }
@@ -802,6 +905,69 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 dictionary = { similarity_words: [] };
                 renderDictionary();
             }
+        }
+
+        // Context detection functions
+        async function loadContext() {
+            // Set checkboxes based on config
+            document.getElementById('context-enabled').checked = currentConfig.context_enabled !== false;
+            document.getElementById('context-debug').checked = currentConfig.context_debug === true;
+            await loadProfiles();
+        }
+
+        async function loadProfiles() {
+            try {
+                const res = await fetch(API_BASE + '/api/context/profiles');
+                const profiles = await res.json();
+                renderProfiles(profiles);
+            } catch (e) {
+                console.error('Failed to load profiles:', e);
+            }
+        }
+
+        function renderProfiles(profiles) {
+            const list = document.getElementById('profile-list');
+            list.innerHTML = '';
+            for (const name of profiles) {
+                const chip = document.createElement('span');
+                chip.className = 'profile-chip';
+                chip.textContent = name;
+                list.appendChild(chip);
+            }
+        }
+
+        async function refreshContext() {
+            try {
+                const res = await fetch(API_BASE + '/api/context/current');
+                const ctx = await res.json();
+
+                document.getElementById('ctx-app').textContent = ctx.app_name || '--';
+                document.getElementById('ctx-title').textContent = ctx.window_title || '--';
+                document.getElementById('ctx-class').textContent = ctx.wm_class || '--';
+                document.getElementById('ctx-profile').textContent = ctx.matched_profile || 'default';
+                document.getElementById('ctx-speed').textContent = ctx.typing_speed || 'normal';
+
+                // Highlight matched profile
+                const chips = document.querySelectorAll('.profile-chip');
+                chips.forEach(chip => {
+                    chip.classList.toggle('active', chip.textContent === ctx.matched_profile);
+                });
+            } catch (e) {
+                console.error('Failed to refresh context:', e);
+                showStatus('Failed to detect context', 'error');
+            }
+        }
+
+        function toggleContextEnabled() {
+            const enabled = document.getElementById('context-enabled').checked;
+            currentConfig.context_enabled = enabled;
+            saveConfig();
+        }
+
+        function toggleContextDebug() {
+            const debug = document.getElementById('context-debug').checked;
+            currentConfig.context_debug = debug;
+            saveConfig();
         }
 
         function renderDictionary() {
@@ -1490,6 +1656,9 @@ def get_current_config() -> dict[str, Any]:
         "secondary_hotkey": env_vars.get("SECONDARY_HOTKEY", "none"),
         "secondary_hotkey_translation": env_vars.get("SECONDARY_HOTKEY_TRANSLATION", "none"),
         "secondary_hotkey_act_on_text": env_vars.get("SECONDARY_HOTKEY_ACT_ON_TEXT", "none"),
+        # Context detection settings
+        "context_enabled": env_vars.get("CONTEXT_ENABLED", "true").lower() == "true",
+        "context_debug": env_vars.get("CONTEXT_DEBUG", "false").lower() == "true",
     }
 
 
@@ -1518,6 +1687,8 @@ def save_config(data: dict[str, Any]) -> None:
         "secondary_hotkey": "SECONDARY_HOTKEY",
         "secondary_hotkey_translation": "SECONDARY_HOTKEY_TRANSLATION",
         "secondary_hotkey_act_on_text": "SECONDARY_HOTKEY_ACT_ON_TEXT",
+        "context_enabled": "CONTEXT_ENABLED",
+        "context_debug": "CONTEXT_DEBUG",
     }
 
     for ui_field, env_var in field_map.items():
@@ -1663,6 +1834,8 @@ def create_app():
         secondary_hotkey: str | None = None
         secondary_hotkey_translation: str | None = None
         secondary_hotkey_act_on_text: str | None = None
+        context_enabled: bool | None = None
+        context_debug: bool | None = None
 
     @app.get("/", response_class=HTMLResponse)
     async def root():
@@ -1706,6 +1879,49 @@ def create_app():
             remove_similarity_word(word)
             return {"status": "ok"}
         return JSONResponse({"error": "Missing word"}, status_code=400)
+
+    @app.get("/api/context/profiles")
+    async def api_get_context_profiles():
+        """Get list of available context profiles."""
+        try:
+            from .context_profiles import get_profile_manager
+
+            manager = get_profile_manager()
+            manager.load()
+            return list(manager.list_profiles())
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @app.get("/api/context/current")
+    async def api_get_current_context():
+        """Get current context detection result."""
+        try:
+            from .context_detector import get_context_detector
+            from .context_profiles import get_profile_manager
+
+            detector = get_context_detector()
+            if not detector:
+                return {
+                    "app_name": "N/A",
+                    "window_title": "Context detection not available",
+                    "wm_class": "",
+                    "matched_profile": "default",
+                    "typing_speed": "normal",
+                }
+
+            context = detector.get_context()
+            manager = get_profile_manager()
+            profile = manager.match_context(context)
+
+            return {
+                "app_name": context.app_name if context else "",
+                "window_title": context.window.title if context and context.window else "",
+                "wm_class": context.window.wm_class if context and context.window else "",
+                "matched_profile": profile.name if profile else "default",
+                "typing_speed": profile.typing_speed if profile else "normal",
+            }
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
 
     @app.post("/api/test/start")
     async def api_test_start():

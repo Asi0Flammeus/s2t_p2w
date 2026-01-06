@@ -87,13 +87,14 @@ class Dicton:
         self._current_context = None  # Reset context
 
         # Detect context at recording start (not on every frame)
-        try:
-            detector = get_context_detector()
-            if detector:
-                self._current_context = detector.get_context()
-        except Exception as e:
-            if config.CONTEXT_DEBUG:
-                print(f"[Context] Detection failed: {e}")
+        if config.CONTEXT_ENABLED:
+            try:
+                detector = get_context_detector()
+                if detector:
+                    self._current_context = detector.get_context()
+            except Exception as e:
+                if config.CONTEXT_DEBUG:
+                    print(f"[Context] Detection failed: {e}")
 
         # For Act on Text, capture selection BEFORE starting recording
         if mode == ProcessingMode.ACT_ON_TEXT:
