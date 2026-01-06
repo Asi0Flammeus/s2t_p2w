@@ -247,6 +247,10 @@ CLEANED TEXT (same language as input):"""
 def translate(text: str, target_language: str = "English") -> str | None:
     """Translate text to target language.
 
+    Uses explicit two-step process:
+    1. CLEAN: Remove all filler words (mandatory)
+    2. TRANSLATE: Translate the cleaned text
+
     Args:
         text: The text to translate.
         target_language: The language to translate to (default: English).
@@ -257,20 +261,54 @@ def translate(text: str, target_language: str = "English") -> str | None:
     if not text:
         return None
 
-    prompt = f"""You are a translator. Translate the following transcribed speech to {target_language}.
+    prompt = f"""You are a translator. Your task has TWO MANDATORY STEPS.
 
-IMPORTANT RULES:
-1. FIRST, clean the source text before translating:
-   - Remove filler words (um, uh, like, you know, euh, genre, en fait, etc.)
-   - Fix grammar issues from the original speech
-   - Convert spoken numbers to digits (e.g., "vingt-trois" → "23", "three hundred" → "300")
-   - Interpret dictation commands (new line, dash, parentheses, etc.) and apply them
-2. Provide an accurate, natural translation to {target_language}
-3. Preserve the original tone and style
-4. Format enumerated items as lists: numbered (1. 2. 3.) for ordinals, bullet points otherwise
-5. Keep the translation close to the original meaning while being natural
-6. Return ONLY the translated text, no explanations
-7. If the input is empty, contains only static noise, or has no meaningful speech content, output exactly "None" with nothing else
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1 - CLEAN (MANDATORY): Remove ALL filler words before translating
+═══════════════════════════════════════════════════════════════════════════════
+
+You MUST remove every single instance of these filler words/phrases. This step is NOT optional.
+
+FRENCH FILLERS (remove all of these):
+- euh, heu, bah, bon, ben
+- genre, en fait, du coup, voilà, quoi
+- tu vois, tu sais, enfin, bref
+- donc voilà, c'est-à-dire, comment dire
+- ah, oh, ouais, hein, nan, mouais
+- donc, alors, en gros, style
+- j'veux dire, disons, enfin bref
+
+ENGLISH FILLERS (remove all of these):
+- um, uh, erm, hmm
+- like, you know, I mean
+- so, basically, actually
+- kind of, sort of, kinda, sorta
+- well, right, okay so
+- I guess, you see, let's see
+- and stuff, or whatever, or something
+
+Also fix in Step 1:
+- Grammar issues from speech
+- Convert spoken numbers to digits ("vingt-trois" → "23", "three hundred" → "300")
+- Interpret dictation commands (new line → actual line break, dash → "-", etc.)
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2 - TRANSLATE: Translate the cleaned text to {target_language}
+═══════════════════════════════════════════════════════════════════════════════
+
+After cleaning, translate with these rules:
+- Provide an accurate, natural translation to {target_language}
+- Preserve the original tone and style
+- Format enumerated items as lists: numbered (1. 2. 3.) for ordinals, bullet points otherwise
+- Keep the translation close to the original meaning while being natural
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT RULES
+═══════════════════════════════════════════════════════════════════════════════
+
+- Return ONLY the final translated text, no explanations or step annotations
+- Do NOT include any filler words in your output
+- If the input is empty, contains only static noise, or has no meaningful speech content, output exactly "None"
 
 TEXT TO TRANSLATE:
 {text}
