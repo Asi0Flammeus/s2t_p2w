@@ -191,6 +191,9 @@ class Config:
 
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
+    # Context detection debug mode - logs detected context and matched profiles
+    CONTEXT_DEBUG = os.getenv("CONTEXT_DEBUG", "false").lower() == "true"
+
     @classmethod
     def create_dirs(cls):
         """Create required directories in user-writable locations."""
