@@ -10,13 +10,13 @@ def _load_env_files():
     """Load .env from multiple possible locations (first found wins).
 
     Priority order:
-    1. User config dir (~/.config/dicton/) - where dashboard saves settings
-    2. Current working directory - for development
+    1. Current working directory - for development/repo
+    2. User config dir (~/.config/dicton/) - user overrides
     3. System install (/opt/dicton/) - read-only defaults
     """
     locations = [
-        Path.home() / ".config" / "dicton" / ".env",  # User config dir - FIRST!
-        Path.cwd() / ".env",  # Current working directory
+        Path.cwd() / ".env",  # Current working directory / repo - FIRST!
+        Path.home() / ".config" / "dicton" / ".env",  # User config dir
         Path("/opt/dicton/.env"),  # System install (read-only fallback)
     ]
 
@@ -123,6 +123,28 @@ class Config:
 
     # ElevenLabs STT model
     ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "scribe_v1")
+
+    # ==========================================================================
+    # STT Provider Configuration
+    # ==========================================================================
+
+    # STT Provider selection: "gladia" (recommended) or "elevenlabs"
+    # Gladia offers streaming (near-zero latency) and native translation
+    # The primary provider will be used first, with fallback to the other if available
+    STT_PROVIDER = os.getenv("STT_PROVIDER", "elevenlabs").lower()
+
+    # STT Mode: "streaming" (real-time) or "batch" (record then transcribe)
+    # Streaming is only supported by Gladia and provides near-zero perceived latency
+    # by transcribing during recording rather than after
+    STT_MODE = os.getenv("STT_MODE", "batch").lower()
+
+    # Gladia API (primary STT provider with streaming + native translation)
+    # Get your key at: https://app.gladia.io/account/api-keys
+    # Pricing: $0.61-0.75/hr, 10 free hours/month
+    GLADIA_API_KEY = os.getenv("GLADIA_API_KEY", "")
+    GLADIA_MODEL = os.getenv("GLADIA_MODEL", "")
+
+    # ==========================================================================
 
     # API timeout in seconds (prevents infinite hang if VPN blocks APIs)
     API_TIMEOUT = float(os.getenv("API_TIMEOUT", "30"))
