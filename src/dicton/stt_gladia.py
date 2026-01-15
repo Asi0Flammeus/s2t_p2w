@@ -10,13 +10,28 @@ Documentation:
 - Live API: https://docs.gladia.io/api-reference/v2/live
 - Translation: https://docs.gladia.io/chapters/audio-intelligence/pages/translation
 - Pricing: https://www.gladia.io/pricing ($0.61-0.75/hr, 10hr free/mo)
+
+Architecture (streaming):
+    The streaming implementation uses an AsyncAudioSource that captures audio
+    in a background thread and yields chunks via an async iterator. This allows
+    the asyncio event loop to handle both send and receive concurrently.
+
+    +------------------+    +------------------+    +------------------+
+    | AUDIO THREAD     |    | ASYNC THREAD     |    | VIZ THREAD       |
+    |                  |    |                  |    |                  |
+    | sounddevice      |    | asyncio loop     |    | pygame           |
+    | (callback)       |    | (persistent)     |    |                  |
+    |     |            |    |                  |    |                  |
+    |     v            |    |  WebSocket       |    |                  |
+    |  Queue.put()     |--->|  send/recv       |    |                  |
+    |                  |    |                  |    |                  |
+    +------------------+    +------------------+    +------------------+
 """
 
 import asyncio
 import base64
 import json
-import threading
-from typing import Callable, Generator
+from typing import TYPE_CHECKING, Callable, Generator
 
 import requests
 
@@ -27,6 +42,9 @@ from .stt_provider import (
     TranscriptionResult,
     WordInfo,
 )
+
+if TYPE_CHECKING:
+    from .streaming_audio import AsyncAudioSource, PyAudioAsyncAdapter
 
 
 class GladiaSTTProvider(STTProvider):
@@ -320,6 +338,10 @@ class GladiaSTTProvider(STTProvider):
         streaming. Audio chunks are sent as they're captured, providing
         near-zero perceived latency when recording stops.
 
+        DEPRECATED: Use stream_transcribe_async() with AsyncAudioSource for
+        proper concurrent send/receive. This method is kept for backward
+        compatibility and falls back to batch mode.
+
         Gladia V2 WebSocket flow:
         1. POST /v2/live to get unique WebSocket URL with auth token
         2. Connect to WebSocket
@@ -352,24 +374,91 @@ class GladiaSTTProvider(STTProvider):
             full_audio = b"".join(audio_chunks)
             return self.transcribe(full_audio)
 
-        # Run async streaming in sync context
-        loop = asyncio.new_event_loop()
+        # Use the async bridge for proper concurrent operation
+        from .async_bridge import get_async_bridge
+
+        bridge = get_async_bridge()
+
+        # Convert sync generator to list and use batch mode
+        # (sync generator cannot be used with async properly)
+        from .config import config
+        if config.DEBUG:
+            print("Note: Using batch fallback. For true streaming, use stream_transcribe_async().")
+
+        audio_chunks = list(audio_generator)
+        if not audio_chunks:
+            return None
+        full_audio = b"".join(audio_chunks)
+        return self.transcribe(full_audio)
+
+    def stream_transcribe_async(
+        self,
+        audio_source: "AsyncAudioSource | PyAudioAsyncAdapter",
+        on_partial: Callable[[TranscriptionResult], None] | None = None,
+        timeout: float = 120.0,
+    ) -> TranscriptionResult | None:
+        """Stream audio for real-time transcription using async audio source.
+
+        This is the preferred method for streaming transcription. It uses an
+        AsyncAudioSource that captures audio in a background thread, allowing
+        proper concurrent WebSocket send/receive.
+
+        Args:
+            audio_source: Async audio source (already started)
+            on_partial: Optional callback for partial (interim) results
+            timeout: Maximum time to wait for result
+
+        Returns:
+            Final TranscriptionResult when streaming ends, or None on failure
+        """
+        if not self.is_available():
+            return None
+
+        # Check if websockets is available
         try:
-            return loop.run_until_complete(
-                self._async_stream_transcribe(audio_generator, on_partial)
+            import websockets  # noqa: F401
+        except ImportError:
+            from .config import config
+
+            if config.DEBUG:
+                print("Gladia streaming requires 'websockets' package.")
+            return None
+
+        # Use the async bridge
+        from .async_bridge import get_async_bridge
+
+        bridge = get_async_bridge()
+
+        try:
+            future = bridge.submit(
+                self._async_stream_transcribe(audio_source, on_partial)
             )
-        finally:
-            loop.close()
+            return future.result(timeout=timeout)
+        except TimeoutError:
+            from .config import config
+
+            if config.DEBUG:
+                print(f"Gladia streaming timed out after {timeout}s")
+            return None
+        except Exception as e:
+            from .config import config
+
+            if config.DEBUG:
+                print(f"Gladia streaming error: {e}")
+            return None
 
     async def _async_stream_transcribe(
         self,
-        audio_generator: Generator[bytes, None, None],
+        audio_source: "AsyncAudioSource | PyAudioAsyncAdapter",
         on_partial: Callable[[TranscriptionResult], None] | None = None,
     ) -> TranscriptionResult | None:
         """Async implementation of streaming transcription.
 
+        Uses an AsyncAudioSource for non-blocking audio iteration,
+        allowing concurrent WebSocket send and receive operations.
+
         Args:
-            audio_generator: Generator yielding raw PCM audio chunks
+            audio_source: Async audio source (must support async iteration)
             on_partial: Optional callback for partial results
 
         Returns:
@@ -420,17 +509,16 @@ class GladiaSTTProvider(STTProvider):
         # Step 2: Connect and stream
         final_text_parts = []
         final_result = None
+        send_complete = asyncio.Event()
 
         try:
             async with websockets.connect(ws_url) as ws:
-                # Create tasks for sending and receiving
-                send_complete = asyncio.Event()
 
                 async def send_audio():
-                    """Send audio chunks to WebSocket."""
+                    """Send audio chunks to WebSocket (non-blocking)."""
                     try:
-                        for chunk in audio_generator:
-                            # Send audio as base64-encoded JSON message
+                        # Use async iteration - yields control to event loop
+                        async for chunk in audio_source:
                             message = {
                                 "type": "audio_chunk",
                                 "data": {
@@ -438,9 +526,14 @@ class GladiaSTTProvider(STTProvider):
                                 },
                             }
                             await ws.send(json.dumps(message))
+                    except StopAsyncIteration:
+                        pass  # Normal end of audio
                     finally:
                         # Signal end of audio
-                        await ws.send(json.dumps({"type": "stop_recording"}))
+                        try:
+                            await ws.send(json.dumps({"type": "stop_recording"}))
+                        except Exception:
+                            pass  # WebSocket may already be closed
                         send_complete.set()
 
                 async def receive_transcripts():
@@ -490,7 +583,9 @@ class GladiaSTTProvider(STTProvider):
                     except websockets.exceptions.ConnectionClosed:
                         pass  # Normal closure
 
-                # Run both tasks concurrently
+                # Run both tasks concurrently - this is the key fix!
+                # Previously the sync generator blocked send_audio(),
+                # starving receive_transcripts() of CPU time.
                 await asyncio.gather(
                     send_audio(),
                     receive_transcripts(),
@@ -523,7 +618,8 @@ class GladiaSTTProvider(STTProvider):
     ) -> TranscriptionResult | None:
         """Stream audio with real-time translation.
 
-        Combines streaming transcription with native translation.
+        DEPRECATED: Use stream_translate_async() with AsyncAudioSource for
+        proper concurrent operation. This method falls back to batch mode.
 
         Args:
             audio_generator: Generator yielding raw PCM audio chunks
@@ -533,13 +629,67 @@ class GladiaSTTProvider(STTProvider):
         Returns:
             Final TranscriptionResult with translation, or None on failure
         """
-        # Note: Gladia streaming translation requires configuring translation
-        # in the initial /v2/live request. This is a placeholder for future
-        # implementation when we integrate streaming into the recording flow.
-
-        # For now, fall back to batch translation
+        # Sync generator cannot be used with async properly
+        # Fall back to batch translation
         audio_chunks = list(audio_generator)
         if not audio_chunks:
             return None
         full_audio = b"".join(audio_chunks)
         return self.translate(full_audio, target_language)
+
+    def stream_translate_async(
+        self,
+        audio_source: "AsyncAudioSource | PyAudioAsyncAdapter",
+        target_language: str = "en",
+        on_partial: Callable[[TranscriptionResult], None] | None = None,
+        timeout: float = 120.0,
+    ) -> TranscriptionResult | None:
+        """Stream audio with real-time translation using async audio source.
+
+        This is the preferred method for streaming translation. It uses an
+        AsyncAudioSource for proper concurrent operation.
+
+        Note: Gladia streaming translation requires configuring translation
+        in the initial /v2/live request. This is currently a placeholder
+        that falls back to batch translation after collecting all audio.
+
+        Args:
+            audio_source: Async audio source (already started)
+            target_language: Target language code (e.g., "en", "fr")
+            on_partial: Optional callback for partial results
+            timeout: Maximum time to wait for result
+
+        Returns:
+            Final TranscriptionResult with translation, or None on failure
+        """
+        # TODO: Implement true streaming translation by adding translation_config
+        # to the /v2/live init payload. For now, collect audio and use batch.
+        from .config import config
+
+        if config.DEBUG:
+            print("Note: Streaming translation not yet implemented, using batch fallback.")
+
+        # Collect all audio from the async source
+        import asyncio
+        from .async_bridge import get_async_bridge
+
+        async def collect_audio():
+            chunks = []
+            try:
+                async for chunk in audio_source:
+                    chunks.append(chunk)
+            except StopAsyncIteration:
+                pass
+            return b"".join(chunks)
+
+        bridge = get_async_bridge()
+        try:
+            future = bridge.submit(collect_audio())
+            full_audio = future.result(timeout=timeout)
+            if not full_audio:
+                return None
+            return self.translate(full_audio, target_language)
+        except Exception as e:
+            if config.DEBUG:
+                print(f"Streaming translation error: {e}")
+            return None
