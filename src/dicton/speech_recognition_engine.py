@@ -6,11 +6,28 @@ Supports multiple STT providers:
 
 The provider is selected via STT_PROVIDER config, with automatic fallback
 if the primary provider is unavailable.
+
+Streaming Architecture:
+    The streaming implementation uses an AsyncAudioSource that captures audio
+    in a background thread and yields chunks via an async iterator. This allows
+    the asyncio event loop to handle both WebSocket send and receive concurrently.
+
+    +------------------+    +------------------+    +------------------+
+    | AUDIO THREAD     |    | ASYNC THREAD     |    | MAIN THREAD      |
+    |                  |    |                  |    |                  |
+    | sounddevice      |    | asyncio loop     |    | visualizer       |
+    | (callback)       |    | (persistent)     |    | keyboard         |
+    |     |            |    |                  |    |                  |
+    |     v            |    |  WebSocket       |    |                  |
+    |  Queue.put()     |--->|  send/recv       |    |                  |
+    |                  |    |                  |    |                  |
+    +------------------+    +------------------+    +------------------+
 """
 
 import contextlib
 import io
 import os
+import threading
 import wave
 from typing import Callable, Generator
 
@@ -290,6 +307,11 @@ class SpeechRecognizer:
         For providers that don't support streaming, this falls back to
         standard record + transcribe.
 
+        Architecture:
+            Uses AsyncAudioSource for non-blocking audio capture in a
+            background thread. Audio chunks are fed to the WebSocket
+            via async iteration, allowing concurrent send/receive.
+
         Args:
             on_partial: Optional callback for partial (interim) results
 
@@ -297,13 +319,13 @@ class SpeechRecognizer:
             Final TranscriptionResult when recording stops, or None on failure
         """
         if not self._stt_provider.is_available():
-            print("⚠ No STT provider available")
+            print("** No STT provider available")
             return None
 
         # Check if provider supports streaming
         if not self._stt_provider.supports_streaming():
             if config.DEBUG:
-                print(f"⚠ {self._stt_provider.name} doesn't support streaming, using batch mode")
+                print(f"** {self._stt_provider.name} doesn't support streaming, using batch mode")
             # Fall back to batch mode
             audio = self.record()
             if audio is None:
@@ -313,6 +335,192 @@ class SpeechRecognizer:
                 return TranscriptionResult(text=text, is_final=True)
             return None
 
+        # Check if provider has the new async streaming method
+        if not hasattr(self._stt_provider, 'stream_transcribe_async'):
+            if config.DEBUG:
+                print(f"** {self._stt_provider.name} doesn't support async streaming, using legacy mode")
+            return self._record_and_stream_transcribe_legacy(on_partial)
+
+        # Use the new async streaming architecture
+        return self._record_and_stream_transcribe_async(on_partial)
+
+    def _record_and_stream_transcribe_async(
+        self,
+        on_partial: Callable[[TranscriptionResult], None] | None = None,
+    ) -> TranscriptionResult | None:
+        """Async implementation of streaming transcription.
+
+        Uses AsyncAudioSource for proper non-blocking operation.
+        Audio is streamed to the STT provider DURING recording for
+        near-zero perceived latency.
+
+        Architecture:
+            1. Start audio capture (sounddevice callback -> queue)
+            2. Submit streaming coroutine to async bridge
+            3. Coroutine consumes from queue via async iteration
+            4. Visualizer also consumes from queue (via separate peek)
+            5. User stops recording -> audio source stops -> coroutine ends
+            6. Final result is returned
+        """
+        from .streaming_audio import create_async_audio_source
+        from .async_bridge import get_async_bridge
+        from concurrent.futures import TimeoutError as FutureTimeoutError
+
+        viz = get_visualizer()
+        self._cancelled = False
+        result_holder = [None]  # Use list to allow modification in nested function
+        error_holder = [None]
+
+        # Create async audio source
+        audio_source = create_async_audio_source(
+            sample_rate=config.SAMPLE_RATE,
+            chunk_size=config.CHUNK_SIZE,
+            channels=1,
+            device=self.input_device,
+        )
+
+        # Thread for updating visualizer
+        viz_stop_event = threading.Event()
+        frames_buffer = []  # Buffer for visualizer updates
+
+        def viz_updater():
+            """Update visualizer from audio source queue.
+
+            Note: The audio source queue is consumed by the async coroutine,
+            so we use a separate buffer that's populated when chunks are read.
+            """
+            while not viz_stop_event.is_set():
+                if frames_buffer:
+                    chunk = frames_buffer.pop(0)
+                    viz.update(chunk)
+                else:
+                    import time
+                    time.sleep(0.01)
+
+        def streaming_worker():
+            """Run streaming transcription in async bridge.
+
+            This runs in the async bridge thread and consumes audio
+            from the queue while recording.
+            """
+            try:
+                bridge = get_async_bridge()
+
+                async def stream_with_viz():
+                    """Stream audio and collect for visualizer."""
+                    nonlocal frames_buffer
+
+                    # Wrapper that also feeds visualizer
+                    class VizAudioSource:
+                        def __init__(self, source):
+                            self._source = source
+
+                        def __aiter__(self):
+                            return self
+
+                        async def __anext__(self):
+                            chunk = await self._source.__anext__()
+                            # Feed visualizer buffer
+                            frames_buffer.append(chunk)
+                            return chunk
+
+                    viz_source = VizAudioSource(audio_source)
+
+                    # Call provider's async streaming method
+                    return await self._stt_provider._async_stream_transcribe(
+                        viz_source,
+                        on_partial=on_partial,
+                    )
+
+                future = bridge.submit(stream_with_viz())
+                result_holder[0] = future.result(timeout=config.STT_TIMEOUT)
+
+            except FutureTimeoutError:
+                if config.DEBUG:
+                    print("** Streaming timed out")
+            except Exception as e:
+                error_holder[0] = e
+                if config.DEBUG:
+                    print(f"** Streaming worker error: {e}")
+
+        try:
+            # Start audio capture
+            audio_source.start()
+            self.recording = True
+            viz.start()
+            print("** Recording (streaming)...")
+
+            # Start visualizer updater thread
+            viz_thread = threading.Thread(target=viz_updater, daemon=True)
+            viz_thread.start()
+
+            # Start streaming worker in background
+            streaming_thread = threading.Thread(target=streaming_worker, daemon=True)
+            streaming_thread.start()
+
+            # Wait for recording to stop (user releases key or double-tap)
+            while self.recording and not self._cancelled:
+                import time
+                time.sleep(0.05)
+
+            # Stop audio capture - this will cause the async iterator to stop
+            audio_source.stop()
+            viz_stop_event.set()
+
+            if self._cancelled:
+                viz.stop()
+                return None
+
+            # Switch to processing mode while waiting for final result
+            viz.start_processing()
+
+            # Wait for streaming to complete
+            streaming_thread.join(timeout=10.0)
+
+            result = result_holder[0]
+            if error_holder[0]:
+                raise error_holder[0]
+
+            if result is None:
+                viz.stop()
+                return None
+
+            # Apply noise filtering
+            if result.text:
+                filtered = self._filter(result.text)
+                if filtered:
+                    return TranscriptionResult(
+                        text=filtered,
+                        language=result.language,
+                        confidence=result.confidence,
+                        is_final=True,
+                        translation=result.translation,
+                    )
+
+            viz.stop()
+            return None
+
+        except Exception as e:
+            print(f"** Streaming transcription error: {e}")
+            if config.DEBUG:
+                import traceback
+                traceback.print_exc()
+            viz.stop()
+            return None
+        finally:
+            audio_source.stop()
+            viz_stop_event.set()
+            self.recording = False
+
+    def _record_and_stream_transcribe_legacy(
+        self,
+        on_partial: Callable[[TranscriptionResult], None] | None = None,
+    ) -> TranscriptionResult | None:
+        """Legacy streaming implementation using sync generator.
+
+        Kept for backward compatibility with providers that don't support
+        the new async streaming architecture.
+        """
         viz = get_visualizer()
         stream = None
         self._cancelled = False
@@ -333,7 +541,7 @@ class SpeechRecognizer:
 
                 self.recording = True
                 viz.start()
-                print("🎤 Recording (streaming)...")
+                print("** Recording (streaming legacy)...")
 
                 while self.recording and not self._cancelled:
                     try:
@@ -342,7 +550,7 @@ class SpeechRecognizer:
                         yield data
                     except Exception as e:
                         if config.DEBUG:
-                            print(f"⚠ Read error: {e}")
+                            print(f"** Read error: {e}")
                         break
 
             finally:
@@ -380,7 +588,7 @@ class SpeechRecognizer:
             return None
 
         except Exception as e:
-            print(f"❌ Streaming transcription error: {e}")
+            print(f"** Streaming transcription error: {e}")
             if config.DEBUG:
                 import traceback
                 traceback.print_exc()
