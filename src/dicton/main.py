@@ -225,14 +225,21 @@ class Dicton:
             text = None
             native_translation = None
 
-            if use_streaming and not use_native_translation:
+            if use_streaming and use_native_translation:
+                # Streaming translation mode: transcribe AND translate during recording
+                with tracker.measure("audio_capture_streaming_translate", mode=mode.name):
+                    result = self.recognizer.record_and_stream_translate("en")
+                    if result:
+                        # Use translation if available, otherwise use original text
+                        native_translation = result.translation if result.translation else result.text
+            elif use_streaming and not use_native_translation:
                 # Streaming mode: transcribe during recording
                 with tracker.measure("audio_capture_streaming", mode=mode.name):
                     result = self.recognizer.record_and_stream_transcribe()
                     if result:
                         text = result.text
             elif use_native_translation:
-                # Native translation mode: record then translate in one call
+                # Native translation mode (batch): record then translate in one call
                 with tracker.measure("audio_capture", mode=mode.name):
                     audio = self.recognizer.record()
 

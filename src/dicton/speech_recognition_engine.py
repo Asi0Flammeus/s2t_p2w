@@ -347,8 +347,9 @@ class SpeechRecognizer:
     def _record_and_stream_transcribe_async(
         self,
         on_partial: Callable[[TranscriptionResult], None] | None = None,
+        target_language: str | None = None,
     ) -> TranscriptionResult | None:
-        """Async implementation of streaming transcription.
+        """Async implementation of streaming transcription with optional translation.
 
         Uses AsyncAudioSource for proper non-blocking operation.
         Audio is streamed to the STT provider DURING recording for
@@ -361,6 +362,10 @@ class SpeechRecognizer:
             4. Visualizer also consumes from queue (via separate peek)
             5. User stops recording -> audio source stops -> coroutine ends
             6. Final result is returned
+
+        Args:
+            on_partial: Optional callback for partial results
+            target_language: If set, enable real-time translation to this language
         """
         from .streaming_audio import create_async_audio_source
         from .async_bridge import get_async_bridge
@@ -426,10 +431,11 @@ class SpeechRecognizer:
 
                     viz_source = VizAudioSource(audio_source)
 
-                    # Call provider's async streaming method
+                    # Call provider's async streaming method (with optional translation)
                     return await self._stt_provider._async_stream_transcribe(
                         viz_source,
                         on_partial=on_partial,
+                        target_language=target_language,
                     )
 
                 future = bridge.submit(stream_with_viz())
@@ -598,6 +604,60 @@ class SpeechRecognizer:
     def stop(self):
         """Stop recording (will process audio)."""
         self.recording = False
+
+    def record_and_stream_translate(
+        self,
+        target_language: str = "en",
+        on_partial: Callable[[TranscriptionResult], None] | None = None,
+    ) -> TranscriptionResult | None:
+        """Record audio with real-time streaming translation.
+
+        This method enables near-zero perceived latency by transcribing
+        AND translating DURING recording. Only supported by Gladia.
+
+        For providers that don't support streaming translation, this falls
+        back to record + batch translate.
+
+        Args:
+            target_language: Target language code (e.g., "en", "fr")
+            on_partial: Optional callback for partial (interim) results
+
+        Returns:
+            Final TranscriptionResult with translation when recording stops,
+            or None on failure
+        """
+        if not self._stt_provider.is_available():
+            print("** No STT provider available")
+            return None
+
+        # Check if provider supports streaming
+        if not self._stt_provider.supports_streaming():
+            if config.DEBUG:
+                print(f"** {self._stt_provider.name} doesn't support streaming, using batch mode")
+            # Fall back to batch mode
+            audio = self.record()
+            if audio is None:
+                return None
+            return self.translate(audio, target_language)
+
+        # Check if provider supports translation
+        if not self._stt_provider.supports_translation():
+            if config.DEBUG:
+                print(f"** {self._stt_provider.name} doesn't support translation")
+            return None
+
+        # Check if provider has the new async streaming method
+        if not hasattr(self._stt_provider, '_async_stream_transcribe'):
+            if config.DEBUG:
+                print(f"** {self._stt_provider.name} doesn't support async streaming translation")
+            # Fall back to batch mode
+            audio = self.record()
+            if audio is None:
+                return None
+            return self.translate(audio, target_language)
+
+        # Use the async streaming architecture with translation
+        return self._record_and_stream_transcribe_async(on_partial, target_language)
 
     def record_for_duration(self, duration_seconds: float) -> np.ndarray | None:
         """Record audio for a fixed duration (for latency testing)."""

@@ -451,8 +451,9 @@ class GladiaSTTProvider(STTProvider):
         self,
         audio_source: "AsyncAudioSource | PyAudioAsyncAdapter",
         on_partial: Callable[[TranscriptionResult], None] | None = None,
+        target_language: str | None = None,
     ) -> TranscriptionResult | None:
-        """Async implementation of streaming transcription.
+        """Async implementation of streaming transcription with optional translation.
 
         Uses an AsyncAudioSource for non-blocking audio iteration,
         allowing concurrent WebSocket send and receive operations.
@@ -460,6 +461,7 @@ class GladiaSTTProvider(STTProvider):
         Args:
             audio_source: Async audio source (must support async iteration)
             on_partial: Optional callback for partial results
+            target_language: If set, enable real-time translation to this language
 
         Returns:
             Final TranscriptionResult or None on failure
@@ -489,6 +491,13 @@ class GladiaSTTProvider(STTProvider):
         if self.config.language:
             init_payload["language_config"]["languages"] = [self.config.language]
             init_payload["language_config"]["code_switching"] = False
+
+        # Add translation config if target language specified
+        if target_language:
+            init_payload["translation_config"] = {
+                "target_languages": [target_language],
+                "model": "base",
+            }
 
         try:
             init_response = requests.post(
@@ -551,11 +560,23 @@ class GladiaSTTProvider(STTProvider):
                                 text = utterance.get("text", "")
                                 is_final = transcript_data.get("is_final", False)
 
+                                # Extract translation if present
+                                translation = None
+                                if target_language:
+                                    translation_data = transcript_data.get("translation", {})
+                                    if translation_data:
+                                        # Handle different translation formats
+                                        if isinstance(translation_data, list) and translation_data:
+                                            translation = translation_data[0].get("text", "")
+                                        elif isinstance(translation_data, dict):
+                                            translation = translation_data.get("text", "")
+
                                 result = TranscriptionResult(
                                     text=text,
                                     language=utterance.get("language"),
                                     confidence=utterance.get("confidence"),
                                     is_final=is_final,
+                                    translation=translation,
                                 )
 
                                 if is_final and text:
@@ -565,11 +586,24 @@ class GladiaSTTProvider(STTProvider):
 
                             elif msg_type == "post_final_transcript":
                                 # Complete transcript at end of session
-                                full_text = data.get("data", {}).get("full_transcript", "")
+                                post_data = data.get("data", {})
+                                full_text = post_data.get("full_transcript", "")
+
+                                # Extract final translation
+                                translation = None
+                                if target_language:
+                                    translation_data = post_data.get("translation", {})
+                                    if translation_data:
+                                        if isinstance(translation_data, list) and translation_data:
+                                            translation = translation_data[0].get("full_transcript", "")
+                                        elif isinstance(translation_data, dict):
+                                            translation = translation_data.get("full_transcript", "")
+
                                 if full_text:
                                     final_result = TranscriptionResult(
                                         text=full_text,
                                         is_final=True,
+                                        translation=translation,
                                         raw_response=data,
                                     )
 
@@ -646,12 +680,8 @@ class GladiaSTTProvider(STTProvider):
     ) -> TranscriptionResult | None:
         """Stream audio with real-time translation using async audio source.
 
-        This is the preferred method for streaming translation. It uses an
-        AsyncAudioSource for proper concurrent operation.
-
-        Note: Gladia streaming translation requires configuring translation
-        in the initial /v2/live request. This is currently a placeholder
-        that falls back to batch translation after collecting all audio.
+        This method streams audio to Gladia and receives translated results
+        in real-time. Translation is configured in the WebSocket init payload.
 
         Args:
             audio_source: Async audio source (already started)
@@ -662,34 +692,39 @@ class GladiaSTTProvider(STTProvider):
         Returns:
             Final TranscriptionResult with translation, or None on failure
         """
-        # TODO: Implement true streaming translation by adding translation_config
-        # to the /v2/live init payload. For now, collect audio and use batch.
-        from .config import config
+        if not self.is_available():
+            return None
 
-        if config.DEBUG:
-            print("Note: Streaming translation not yet implemented, using batch fallback.")
+        # Check if websockets is available
+        try:
+            import websockets  # noqa: F401
+        except ImportError:
+            from .config import config
 
-        # Collect all audio from the async source
-        import asyncio
+            if config.DEBUG:
+                print("Gladia streaming requires 'websockets' package.")
+            return None
+
+        # Use the async bridge
         from .async_bridge import get_async_bridge
 
-        async def collect_audio():
-            chunks = []
-            try:
-                async for chunk in audio_source:
-                    chunks.append(chunk)
-            except StopAsyncIteration:
-                pass
-            return b"".join(chunks)
-
         bridge = get_async_bridge()
+
         try:
-            future = bridge.submit(collect_audio())
-            full_audio = future.result(timeout=timeout)
-            if not full_audio:
-                return None
-            return self.translate(full_audio, target_language)
-        except Exception as e:
+            # Call _async_stream_transcribe with target_language to enable translation
+            future = bridge.submit(
+                self._async_stream_transcribe(audio_source, on_partial, target_language)
+            )
+            return future.result(timeout=timeout)
+        except TimeoutError:
+            from .config import config
+
             if config.DEBUG:
-                print(f"Streaming translation error: {e}")
+                print(f"Gladia streaming translation timed out after {timeout}s")
+            return None
+        except Exception as e:
+            from .config import config
+
+            if config.DEBUG:
+                print(f"Gladia streaming translation error: {e}")
             return None
