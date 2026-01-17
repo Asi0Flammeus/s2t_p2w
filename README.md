@@ -397,6 +397,7 @@ dicton/
 | Package | Purpose |
 |---------|---------|
 | `elevenlabs` | Speech-to-text API |
+| `mistralai` | Mistral STT API (alternative) |
 | `google-genai` | Gemini LLM API |
 | `anthropic` | Anthropic LLM API (alternative) |
 | `evdev` | FN key capture (Linux) |
@@ -404,6 +405,61 @@ dicton/
 | `pygame` | Audio visualizer |
 | `numpy` | Audio processing |
 | `python-dotenv` | Configuration |
+
+## STT Provider Comparison
+
+Dicton supports multiple speech-to-text providers. Choose based on your priorities:
+
+### Quick Comparison
+
+| | ElevenLabs Scribe | Mistral Voxtral |
+|--|-------------------|-----------------|
+| **Best For** | Multi-language, streaming | Cost-sensitive, batch |
+| **Cost** | $0.40/hour | $0.06/hour |
+| **Accuracy (EN)** | ~4-6% WER | 1.2-5.1% WER |
+| **Languages** | 90+ | 8 major |
+| **Batch Speed** | ~10s/min audio | ~3s/min audio |
+| **Streaming** | Yes (150ms) | No |
+
+### When to Choose ElevenLabs
+
+- You need **90+ language** support
+- You want **real-time streaming** transcription
+- You need **speaker diarization** (who said what)
+- Audio files are **longer than 15 minutes**
+
+### When to Choose Mistral
+
+- **Cost is a priority** (85% cheaper)
+- You primarily use **English, French, German, Spanish, Portuguese, Italian, Dutch, or Hindi**
+- You prefer **faster batch processing** (~3x faster)
+- You want **better accuracy** on major languages
+
+### Configuration
+
+```bash
+# Use ElevenLabs (default)
+STT_PROVIDER=elevenlabs
+ELEVENLABS_API_KEY=your_key
+
+# Use Mistral Voxtral
+STT_PROVIDER=mistral
+MISTRAL_API_KEY=your_key
+```
+
+### Detailed Metrics
+
+| Metric | ElevenLabs Scribe | Mistral Voxtral |
+|--------|-------------------|-----------------|
+| **Pricing** | $0.0067/min | $0.001/min |
+| **English WER** | ~4-6% | 1.2% (LibriSpeech) |
+| **Processing Speed** | 6-7x real-time | 20x real-time |
+| **Max Audio Duration** | 10 hours | ~15 minutes |
+| **Streaming Latency** | 150ms | N/A (batch only) |
+| **Word Timestamps** | Yes | Yes (segments) |
+| **Speaker Diarization** | Yes (48 speakers) | No |
+
+> **Note**: Word Error Rate (WER) varies by audio quality, accent, and domain. Lower is better.
 
 ## Uninstall
 
@@ -429,6 +485,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 - [ElevenLabs](https://elevenlabs.io/) - Speech-to-text API
+- [Mistral AI](https://mistral.ai/) - Alternative STT provider (Voxtral)
 - [Google Gemini](https://ai.google.dev/) - LLM for text processing
 - [Anthropic Claude](https://www.anthropic.com/) - Alternative LLM provider
 - [Flexoki](https://github.com/kepano/flexoki) - Color palette for mode indicators

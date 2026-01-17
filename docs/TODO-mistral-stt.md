@@ -8,14 +8,29 @@
 
 ## Executive Summary
 
-| Metric | Mistral Voxtral | ElevenLabs (Current) |
-|--------|-----------------|----------------------|
+| Metric | Mistral Voxtral | ElevenLabs Scribe |
+|--------|-----------------|-------------------|
 | **Cost** | $0.001/min ($0.06/hr) | $0.40/hr |
 | **Savings** | **85% reduction** | Baseline |
-| **Accuracy (EN)** | 5.1% WER | ~6-8% WER |
+| **Accuracy (EN)** | 1.2-5.1% WER | ~4-6% WER |
 | **Languages** | ~8 major | 90+ |
 | **Max Duration** | ~15 min | 10 hours |
-| **Streaming** | No | WebSocket |
+| **Streaming** | No | WebSocket (150ms) |
+| **Batch Latency** | ~3s per 1min audio | Not documented |
+| **Processing Speed** | 20x real-time | ~6-7x real-time |
+
+### Latency Analysis
+
+| Metric | Mistral Voxtral | ElevenLabs Scribe |
+|--------|-----------------|-------------------|
+| **Batch Processing** | 3.01s for 1min audio | ~9-10s for 1min audio* |
+| **Real-time Factor** | 0.05 (20x faster) | ~0.15 (6-7x faster) |
+| **End-to-end Latency** | ~200ms | ~150ms (streaming only) |
+| **Streaming Support** | ❌ Batch only | ✅ WebSocket |
+
+*ElevenLabs batch latency estimated from real-time factor
+
+**Key Finding**: For **batch transcription** (Dicton's current mode), Mistral Voxtral is **~2.7x faster** than alternatives like Whisper, processing 1 minute of audio in ~3 seconds. ElevenLabs excels in streaming scenarios with 150ms latency, but for batch use cases, Voxtral offers better price-performance.
 
 **Recommendation**: Implement as additional provider option, not replacement. Users select via `STT_PROVIDER=mistral` env var.
 
