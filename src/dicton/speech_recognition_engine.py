@@ -71,10 +71,8 @@ class SpeechRecognizer:
 
         self._find_input_device()
 
-        if self._provider_available:
-            print(f"✓ Using {self._stt_provider.name}")
-        else:
-            print("⚠ No STT provider available")
+        # Provider status is printed by the factory (verbose=True by default)
+        if not self._provider_available:
             print("   Set MISTRAL_API_KEY or ELEVENLABS_API_KEY in .env")
 
     @property

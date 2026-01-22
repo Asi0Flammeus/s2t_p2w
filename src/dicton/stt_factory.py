@@ -109,6 +109,7 @@ def get_stt_provider(
 def get_stt_provider_with_fallback(
     config: STTProviderConfig | None = None,
     fallback_order: list[str] | None = None,
+    verbose: bool = True,
 ) -> STTProvider:
     """Get the best available STT provider with fallback.
 
@@ -118,6 +119,7 @@ def get_stt_provider_with_fallback(
         config: Optional configuration for providers.
         fallback_order: List of provider names to try in order.
                        Defaults to DEFAULT_FALLBACK_ORDER.
+        verbose: Print user-facing status messages.
 
     Returns:
         First available STTProvider, or NullSTTProvider if none available.
@@ -129,18 +131,31 @@ def get_stt_provider_with_fallback(
     if user_provider:
         provider = get_stt_provider(user_provider, config)
         if provider.is_available():
+            if verbose:
+                print(f"✓ STT Provider: {provider.name} (configured)")
+            logger.info(f"Using user-specified STT provider: {provider.name}")
             return provider
+        if verbose:
+            print(f"⚠ STT Provider '{user_provider}' not available (check API key)")
         logger.warning(f"User-specified STT provider '{user_provider}' not available, trying fallbacks")
 
     # Try fallback order
     order = fallback_order or DEFAULT_FALLBACK_ORDER
+    is_fallback = bool(user_provider)  # If user specified one and it failed, next is fallback
 
     for name in order:
         provider = get_stt_provider(name, config, use_cache=True)
         if provider.is_available():
+            if verbose:
+                suffix = "(fallback)" if is_fallback else "(primary)"
+                print(f"✓ STT Provider: {provider.name} {suffix}")
+            logger.info(f"Initialized STT provider: {provider.name}")
             return provider
         logger.debug(f"STT provider '{name}' not available, trying next")
+        is_fallback = True  # Next provider in chain is a fallback
 
+    if verbose:
+        print("⚠ No STT provider available")
     logger.warning("No STT providers available, using NullSTTProvider")
     return NullSTTProvider()
 
