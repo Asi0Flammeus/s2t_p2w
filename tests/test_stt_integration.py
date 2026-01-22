@@ -123,10 +123,11 @@ class TestElevenLabsConnectivity:
         # Note: We can't actually test this without making an API call
         # which would fail with invalid key
 
-    def test_speech_recognizer_detects_elevenlabs(self, speech_recognizer):
-        """Test SpeechRecognizer detects ElevenLabs availability."""
+    def test_speech_recognizer_detects_provider(self, speech_recognizer):
+        """Test SpeechRecognizer detects STT provider availability."""
         assert speech_recognizer.use_elevenlabs is True
-        assert speech_recognizer.client is not None
+        assert speech_recognizer._provider_available is True
+        assert speech_recognizer.provider_name != "None"
 
 
 # =============================================================================
@@ -282,15 +283,15 @@ class TestProviderAvailability:
             recognizer = SpeechRecognizer()
             assert recognizer.use_elevenlabs is True
 
-    def test_elevenlabs_unavailable_without_api_key(self):
-        """Test ElevenLabs is unavailable when API key is missing."""
-        with patch("dicton.speech_recognition_engine.pyaudio") as mock_pyaudio, \
-             patch("dicton.speech_recognition_engine.config") as mock_config:
+    def test_provider_unavailable_without_api_keys(self):
+        """Test STT provider is unavailable when no API keys are set."""
+        from dicton.stt_provider import NullSTTProvider
 
-            mock_config.ELEVENLABS_API_KEY = ""  # No API key
-            mock_config.MIC_DEVICE = "auto"
-            mock_config.SAMPLE_RATE = 16000
-            mock_config.VISUALIZER_BACKEND = "pygame"
+        with patch("dicton.speech_recognition_engine.pyaudio") as mock_pyaudio, \
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
+
+            # Factory returns NullSTTProvider when no providers available
+            mock_factory.return_value = NullSTTProvider()
 
             mock_audio = MagicMock()
             mock_pyaudio.PyAudio.return_value = mock_audio
@@ -311,7 +312,10 @@ class TestProviderAvailability:
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = SpeechRecognizer()
+            # use_elevenlabs is now a property for backwards compatibility
+            # It returns True if any provider is available
             assert recognizer.use_elevenlabs is False
+            assert recognizer._provider_available is False
 
 
 # =============================================================================

@@ -3,7 +3,7 @@
 Tests the SpeechRecognizer class functionality including:
 - Device detection and selection
 - Audio recording lifecycle
-- Transcription with ElevenLabs
+- Transcription via STT provider abstraction
 - Text filtering and noise removal
 """
 
@@ -13,6 +13,8 @@ import wave
 
 import numpy as np
 import pytest
+
+from dicton.stt_provider import NullSTTProvider, TranscriptionResult
 
 
 # =============================================================================
@@ -141,10 +143,13 @@ class TestTextFilter:
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config") as mock_config, \
              patch("dicton.speech_recognition_engine.get_text_processor") as mock_processor, \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", False):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
 
             mock_config.MIC_DEVICE = "auto"
             mock_config.SAMPLE_RATE = 16000
+
+            # Mock factory to return NullSTTProvider
+            mock_factory.return_value = NullSTTProvider()
 
             # Mock text processor to return input unchanged
             processor_instance = MagicMock()
@@ -154,11 +159,11 @@ class TestTextFilter:
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = False
+            recognizer._stt_provider = NullSTTProvider()
+            recognizer._provider_available = False
             recognizer.recording = False
             recognizer._cancelled = False
             recognizer.input_device = None
-            recognizer.client = None
 
             # Set up text processor mock
             from dicton.text_processor import get_text_processor
@@ -245,7 +250,9 @@ class TestRecordingLifecycle:
         """Test stop() sets recording flag to False."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config"), \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", False):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
+
+            mock_factory.return_value = NullSTTProvider()
 
             from dicton.speech_recognition_engine import SpeechRecognizer
 
@@ -260,7 +267,9 @@ class TestRecordingLifecycle:
         """Test cancel() sets both cancelled and recording flags."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config"), \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", False):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
+
+            mock_factory.return_value = NullSTTProvider()
 
             from dicton.speech_recognition_engine import SpeechRecognizer
 
@@ -273,16 +282,19 @@ class TestRecordingLifecycle:
             assert recognizer.recording is False
             assert recognizer._cancelled is True
 
-    def test_record_returns_none_without_elevenlabs(self):
-        """Test record() returns None when ElevenLabs unavailable."""
+    def test_record_returns_none_without_provider(self):
+        """Test record() returns None when no STT provider available."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config"), \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", False):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
+
+            mock_factory.return_value = NullSTTProvider()
 
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = False
+            recognizer._stt_provider = NullSTTProvider()
+            recognizer._provider_available = False
 
             result = recognizer.record()
 
@@ -301,71 +313,73 @@ class TestTranscription:
         """Test transcribe() returns None for empty audio."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config"), \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", True):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
+
+            mock_provider = MagicMock()
+            mock_provider.is_available.return_value = True
+            mock_factory.return_value = mock_provider
 
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = True
-            recognizer.client = MagicMock()
+            recognizer._stt_provider = mock_provider
+            recognizer._provider_available = True
 
             assert recognizer.transcribe(None) is None
             assert recognizer.transcribe(np.array([])) is None
 
-    def test_transcribe_returns_none_without_elevenlabs(self):
-        """Test transcribe() returns None when ElevenLabs unavailable."""
+    def test_transcribe_returns_none_without_provider(self):
+        """Test transcribe() returns None when no STT provider available."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config"), \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", False):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
+
+            mock_factory.return_value = NullSTTProvider()
 
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = False
-            recognizer.client = None
+            recognizer._stt_provider = NullSTTProvider()
+            recognizer._provider_available = False
 
             audio = np.random.randn(16000).astype(np.float32)
             result = recognizer.transcribe(audio)
 
             assert result is None
 
-    def test_transcribe_calls_elevenlabs_api(self):
-        """Test transcribe() calls ElevenLabs API with correct format."""
+    def test_transcribe_calls_provider_api(self):
+        """Test transcribe() calls STT provider with correct format."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config") as mock_config, \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", True), \
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory, \
              patch("dicton.speech_recognition_engine.get_text_processor") as mock_proc:
 
             mock_config.SAMPLE_RATE = 16000
-            mock_config.ELEVENLABS_MODEL = "scribe_v1"
             mock_config.DEBUG = False
 
             processor = MagicMock()
             processor.process.side_effect = lambda x: x
             mock_proc.return_value = processor
 
+            # Create mock provider that returns transcription result
+            mock_provider = MagicMock()
+            mock_provider.transcribe.return_value = TranscriptionResult(
+                text="Hello world transcription"
+            )
+            mock_factory.return_value = mock_provider
+
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = True
-            recognizer.client = MagicMock()
-            recognizer.client.speech_to_text.convert.return_value = MagicMock(
-                text="Hello world transcription"
-            )
+            recognizer._stt_provider = mock_provider
+            recognizer._provider_available = True
 
             # Create test audio (1 second of silence)
             audio = np.zeros(16000, dtype=np.float32)
             result = recognizer.transcribe(audio)
 
-            # Verify API was called
-            recognizer.client.speech_to_text.convert.assert_called_once()
-            call_kwargs = recognizer.client.speech_to_text.convert.call_args
-
-            # Verify model was passed
-            assert call_kwargs.kwargs["model_id"] == "scribe_v1"
-
-            # Verify file argument is a BytesIO-like object
-            assert "file" in call_kwargs.kwargs
+            # Verify provider was called
+            mock_provider.transcribe.assert_called_once()
 
             # Result should be the transcription text
             assert result == "Hello world transcription"
@@ -374,18 +388,21 @@ class TestTranscription:
         """Test transcribe() handles API errors gracefully."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config") as mock_config, \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", True):
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory:
 
             mock_config.SAMPLE_RATE = 16000
-            mock_config.ELEVENLABS_MODEL = "scribe_v1"
             mock_config.DEBUG = False
+
+            # Create mock provider that raises exception
+            mock_provider = MagicMock()
+            mock_provider.transcribe.side_effect = Exception("API Error")
+            mock_factory.return_value = mock_provider
 
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = True
-            recognizer.client = MagicMock()
-            recognizer.client.speech_to_text.convert.side_effect = Exception("API Error")
+            recognizer._stt_provider = mock_provider
+            recognizer._provider_available = True
 
             audio = np.zeros(16000, dtype=np.float32)
             result = recognizer.transcribe(audio)
@@ -405,11 +422,10 @@ class TestAudioConversion:
         """Test WAV file is created with correct format."""
         with patch("dicton.speech_recognition_engine.pyaudio"), \
              patch("dicton.speech_recognition_engine.config") as mock_config, \
-             patch("dicton.speech_recognition_engine.HAS_ELEVENLABS", True), \
+             patch("dicton.speech_recognition_engine.get_stt_provider_with_fallback") as mock_factory, \
              patch("dicton.speech_recognition_engine.get_text_processor") as mock_proc:
 
             mock_config.SAMPLE_RATE = 16000
-            mock_config.ELEVENLABS_MODEL = "scribe_v1"
             mock_config.DEBUG = False
 
             processor = MagicMock()
@@ -419,18 +435,21 @@ class TestAudioConversion:
             from dicton.speech_recognition_engine import SpeechRecognizer
 
             recognizer = object.__new__(SpeechRecognizer)
-            recognizer.use_elevenlabs = True
 
-            # Capture the WAV file sent to API
+            # Capture the WAV bytes sent to provider
             captured_wav = None
 
-            def capture_convert(**kwargs):
+            def capture_transcribe(audio_bytes):
                 nonlocal captured_wav
-                captured_wav = kwargs.get("file")
-                return MagicMock(text="test transcription")
+                captured_wav = audio_bytes
+                return TranscriptionResult(text="test transcription")
 
-            recognizer.client = MagicMock()
-            recognizer.client.speech_to_text.convert.side_effect = capture_convert
+            mock_provider = MagicMock()
+            mock_provider.transcribe.side_effect = capture_transcribe
+            mock_factory.return_value = mock_provider
+
+            recognizer._stt_provider = mock_provider
+            recognizer._provider_available = True
 
             # Create test audio
             audio = np.random.randn(16000).astype(np.float32) * 0.5
@@ -438,9 +457,9 @@ class TestAudioConversion:
 
             # Verify WAV format
             assert captured_wav is not None
-            captured_wav.seek(0)
+            wav_buffer = BytesIO(captured_wav)
 
-            with wave.open(captured_wav, "rb") as wav:
+            with wave.open(wav_buffer, "rb") as wav:
                 assert wav.getnchannels() == 1
                 assert wav.getsampwidth() == 2  # 16-bit
                 assert wav.getframerate() == 16000
