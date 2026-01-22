@@ -445,8 +445,7 @@ class Dicton:
             print(f"Hotkey: {config.HOTKEY_MODIFIER}+{config.HOTKEY_KEY}")
             self.keyboard.start()
 
-        stt_mode = "ElevenLabs" if self.recognizer.use_elevenlabs else "Local"
-        print(f"STT: {stt_mode}")
+        print(f"STT: {self.recognizer.provider_name}")
         print("\nPress hotkey to start/stop recording")
         print("Press Ctrl+C to quit")
         print("=" * 50 + "\n")
