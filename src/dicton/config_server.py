@@ -613,15 +613,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- Configuration Tab -->
         <div id="tab-config" class="tab-content">
             <div class="section">
-                <div class="section-title">API Keys</div>
+                <div class="section-title">Speech-to-Text</div>
                 <div class="form-group">
-                    <label>ElevenLabs API Key</label>
-                    <div class="input-with-status">
-                        <input type="password" id="elevenlabs_api_key" placeholder="Enter your ElevenLabs API key">
-                        <span id="elevenlabs-status" class="input-status not-set">Not Set</span>
-                    </div>
-                    <div class="hint">Required for speech-to-text. Get it from elevenlabs.io</div>
+                    <label>STT Provider</label>
+                    <select id="stt_provider">
+                        <option value="auto">Auto (tries Mistral, then ElevenLabs)</option>
+                        <option value="mistral">Mistral (~85% cheaper)</option>
+                        <option value="elevenlabs">ElevenLabs</option>
+                    </select>
+                    <div class="hint">Mistral: $0.06/hr | ElevenLabs: $0.40/hr</div>
                 </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Mistral API Key</label>
+                        <div class="input-with-status">
+                            <input type="password" id="mistral_api_key" placeholder="Mistral API key">
+                            <span id="mistral-status" class="input-status not-set">Not Set</span>
+                        </div>
+                        <div class="hint">Get it from console.mistral.ai</div>
+                    </div>
+                    <div class="form-group">
+                        <label>ElevenLabs API Key</label>
+                        <div class="input-with-status">
+                            <input type="password" id="elevenlabs_api_key" placeholder="ElevenLabs API key">
+                            <span id="elevenlabs-status" class="input-status not-set">Not Set</span>
+                        </div>
+                        <div class="hint">Get it from elevenlabs.io</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">LLM (Reformulation & Translation)</div>
                 <div class="grid-2">
                     <div class="form-group">
                         <label>Gemini API Key</label>
@@ -1309,15 +1332,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         function populateForm(cfg) {
+            // STT provider
+            document.getElementById('stt_provider').value = cfg.stt_provider || 'auto';
+
             // API keys - show masked values (first char + dots + last 2 chars)
+            const mistralSet = cfg.mistral_api_key_set || false;
             const elevenlabsSet = cfg.elevenlabs_api_key_set || false;
             const geminiSet = cfg.gemini_api_key_set || false;
             const anthropicSet = cfg.anthropic_api_key_set || false;
 
+            document.getElementById('mistral_api_key').value = cfg.mistral_api_key_masked || '';
             document.getElementById('elevenlabs_api_key').value = cfg.elevenlabs_api_key_masked || '';
             document.getElementById('gemini_api_key').value = cfg.gemini_api_key_masked || '';
             document.getElementById('anthropic_api_key').value = cfg.anthropic_api_key_masked || '';
 
+            updateApiKeyStatus('mistral', mistralSet);
             updateApiKeyStatus('elevenlabs', elevenlabsSet);
             updateApiKeyStatus('gemini', geminiSet);
             updateApiKeyStatus('anthropic', anthropicSet);
@@ -1353,6 +1382,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         function getFormData() {
             const hotkeyBase = document.getElementById('hotkey_base').value;
             const data = {
+                stt_provider: document.getElementById('stt_provider').value,
                 llm_provider: document.getElementById('llm_provider').value,
                 theme_color: document.querySelector('.color-option.selected')?.dataset.color || 'orange',
                 visualizer_style: document.getElementById('visualizer_style').value,
@@ -1373,11 +1403,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             // Only include API keys if they were changed (not masked)
             // Masked format: X••••••••YZ (first char + dots + last 2 chars)
+            const mistral = document.getElementById('mistral_api_key').value;
             const elevenlabs = document.getElementById('elevenlabs_api_key').value;
             const gemini = document.getElementById('gemini_api_key').value;
             const anthropic = document.getElementById('anthropic_api_key').value;
 
             const isMasked = (v) => v && v.includes('••');
+            if (mistral && !isMasked(mistral)) data.mistral_api_key = mistral;
             if (elevenlabs && !isMasked(elevenlabs)) data.elevenlabs_api_key = elevenlabs;
             if (gemini && !isMasked(gemini)) data.gemini_api_key = gemini;
             if (anthropic && !isMasked(anthropic)) data.anthropic_api_key = anthropic;
@@ -1558,7 +1590,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         // Clear API key field when focused (to allow entering new value)
-        ['elevenlabs_api_key', 'gemini_api_key', 'anthropic_api_key'].forEach(id => {
+        ['mistral_api_key', 'elevenlabs_api_key', 'gemini_api_key', 'anthropic_api_key'].forEach(id => {
             document.getElementById(id).addEventListener('focus', function() {
                 if (this.value.includes('••')) {
                     this.value = '';
@@ -1894,12 +1926,17 @@ def get_current_config() -> dict[str, Any]:
     env_vars = read_env_file()
 
     # Get API keys with masking
+    mistral_key = env_vars.get("MISTRAL_API_KEY", "")
     elevenlabs_key = env_vars.get("ELEVENLABS_API_KEY", "")
     gemini_key = env_vars.get("GEMINI_API_KEY", "")
     anthropic_key = env_vars.get("ANTHROPIC_API_KEY", "")
 
     return {
+        # STT settings
+        "stt_provider": env_vars.get("STT_PROVIDER", config.STT_PROVIDER),
         # API keys - masked values for display
+        "mistral_api_key_set": bool(mistral_key),
+        "mistral_api_key_masked": _mask_api_key(mistral_key),
         "elevenlabs_api_key_set": bool(elevenlabs_key),
         "elevenlabs_api_key_masked": _mask_api_key(elevenlabs_key),
         "gemini_api_key_set": bool(gemini_key),
@@ -1940,6 +1977,8 @@ def save_config(data: dict[str, Any]) -> None:
 
     # Map UI fields to env vars
     field_map = {
+        "stt_provider": "STT_PROVIDER",
+        "mistral_api_key": "MISTRAL_API_KEY",
         "elevenlabs_api_key": "ELEVENLABS_API_KEY",
         "gemini_api_key": "GEMINI_API_KEY",
         "anthropic_api_key": "ANTHROPIC_API_KEY",
