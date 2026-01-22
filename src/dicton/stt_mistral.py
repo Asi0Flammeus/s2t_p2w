@@ -192,12 +192,24 @@ class MistralSTTProvider(STTProvider):
             return None
 
         try:
+            # Debug output for verification
+            from .config import config as app_config
+
+            if app_config.DEBUG:
+                wav_buffer.seek(0, 2)  # Seek to end
+                audio_size = wav_buffer.tell()
+                wav_buffer.seek(0)  # Reset
+                print(f"[Mistral] 🔄 Calling API: model={self._config.model}, audio={audio_size} bytes")
+
             # Call Mistral API
             # Note: Cannot use language + timestamp_granularities together
             result = self._client.audio.transcriptions.complete(
                 model=self._config.model,
                 file={"content": wav_buffer.read(), "file_name": "audio.wav"},
             )
+
+            if app_config.DEBUG:
+                print(f"[Mistral] ✓ Response received: {len(result.text) if result and hasattr(result, 'text') else 0} chars")
 
             if not result or not hasattr(result, "text"):
                 logger.warning("Mistral returned no text")
