@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # =============================================================================
 # Data Classes Tests
 # =============================================================================
@@ -292,11 +291,12 @@ class TestGetContextDetector:
         clear_detector_cache()
 
         # Patch at platform_utils module level since that's where flags are imported from
-        with patch("dicton.platform_utils.IS_LINUX", True), \
-             patch("dicton.platform_utils.IS_X11", True), \
-             patch("dicton.platform_utils.IS_WAYLAND", False), \
-             patch("dicton.platform_utils.IS_WINDOWS", False):
-
+        with (
+            patch("dicton.platform_utils.IS_LINUX", True),
+            patch("dicton.platform_utils.IS_X11", True),
+            patch("dicton.platform_utils.IS_WAYLAND", False),
+            patch("dicton.platform_utils.IS_WINDOWS", False),
+        ):
             # The detector will try to import X11ContextDetector
             # On a real X11 system, it would succeed. Here we just verify
             # the function returns without error (either X11 or Null)
@@ -316,9 +316,10 @@ class TestGetContextDetector:
         clear_detector_cache()
 
         # Patch platform flags to simulate unsupported platform
-        with patch("dicton.platform_utils.IS_LINUX", False), \
-             patch("dicton.platform_utils.IS_WINDOWS", False):
-
+        with (
+            patch("dicton.platform_utils.IS_LINUX", False),
+            patch("dicton.platform_utils.IS_WINDOWS", False),
+        ):
             detector = get_context_detector()
             # On unsupported platforms, should return NullContextDetector
             assert isinstance(detector, NullContextDetector)
@@ -500,9 +501,7 @@ class TestWaylandContextDetector:
                 }
             ],
         }
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout=json.dumps(sway_tree)
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps(sway_tree))
 
         result = sway_detector.get_active_window()
 
@@ -530,9 +529,7 @@ class TestWaylandContextDetector:
             "at": [100, 200],
             "size": [800, 600],
         }
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout=json.dumps(hyprland_output)
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps(hyprland_output))
 
         result = hyprland_detector.get_active_window()
 
@@ -663,7 +660,7 @@ class TestFallbackChain:
 
     def test_context_captures_errors(self):
         """Test that errors are captured without breaking detection."""
-        from dicton.context_detector import ContextDetector, ContextInfo, WindowInfo
+        from dicton.context_detector import ContextDetector, WindowInfo
 
         class PartialDetector(ContextDetector):
             """Detector that fails on widget detection."""

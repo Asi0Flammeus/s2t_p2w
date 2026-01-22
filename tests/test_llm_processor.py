@@ -15,24 +15,63 @@ class TestFillerWordLists:
 
     # French fillers that should be removed
     FRENCH_FILLERS = [
-        "euh", "heu", "bah", "bon", "ben",
-        "genre", "en fait", "du coup", "voilà", "quoi",
-        "tu vois", "tu sais", "enfin", "bref",
-        "donc voilà", "c'est-à-dire", "comment dire",
-        "ah", "oh", "ouais", "hein", "nan", "mouais",
-        "donc", "alors", "en gros", "style",
-        "j'veux dire", "disons", "enfin bref",
+        "euh",
+        "heu",
+        "bah",
+        "bon",
+        "ben",
+        "genre",
+        "en fait",
+        "du coup",
+        "voilà",
+        "quoi",
+        "tu vois",
+        "tu sais",
+        "enfin",
+        "bref",
+        "donc voilà",
+        "c'est-à-dire",
+        "comment dire",
+        "ah",
+        "oh",
+        "ouais",
+        "hein",
+        "nan",
+        "mouais",
+        "donc",
+        "alors",
+        "en gros",
+        "style",
+        "j'veux dire",
+        "disons",
+        "enfin bref",
     ]
 
     # English fillers that should be removed
     ENGLISH_FILLERS = [
-        "um", "uh", "erm", "hmm",
-        "like", "you know", "I mean",
-        "so", "basically", "actually",
-        "kind of", "sort of", "kinda", "sorta",
-        "well", "right", "okay so",
-        "I guess", "you see", "let's see",
-        "and stuff", "or whatever", "or something",
+        "um",
+        "uh",
+        "erm",
+        "hmm",
+        "like",
+        "you know",
+        "I mean",
+        "so",
+        "basically",
+        "actually",
+        "kind of",
+        "sort of",
+        "kinda",
+        "sorta",
+        "well",
+        "right",
+        "okay so",
+        "I guess",
+        "you see",
+        "let's see",
+        "and stuff",
+        "or whatever",
+        "or something",
     ]
 
     def test_french_fillers_defined(self):
@@ -50,6 +89,7 @@ class TestTranslationPromptStructure:
     def test_prompt_has_two_steps(self):
         """Verify the translate function prompt contains two-step structure."""
         import inspect
+
         from src.dicton.llm_processor import translate
 
         # Get the function source to verify prompt structure
@@ -64,6 +104,7 @@ class TestTranslationPromptStructure:
     def test_prompt_contains_french_fillers(self):
         """Verify prompt mentions French filler examples."""
         import inspect
+
         from src.dicton.llm_processor import translate
 
         source = inspect.getsource(translate)
@@ -76,6 +117,7 @@ class TestTranslationPromptStructure:
     def test_prompt_contains_english_fillers(self):
         """Verify prompt mentions English filler examples."""
         import inspect
+
         from src.dicton.llm_processor import translate
 
         source = inspect.getsource(translate)
@@ -96,7 +138,8 @@ class TestTranslationFillerRemoval:
     @pytest.fixture
     def translation_func(self):
         """Get the translate function."""
-        from src.dicton.llm_processor import translate, is_available
+        from src.dicton.llm_processor import is_available, translate
+
         if not is_available():
             pytest.skip("No LLM provider configured")
         return translate
@@ -180,5 +223,3 @@ class TestTranslationEmptyInput:
         # The function should handle this gracefully
         result = translate(None)  # type: ignore
         assert result is None
-
-
