@@ -81,13 +81,14 @@ class TestMistralAvailability:
         """Test provider is available with API key."""
         from dicton.stt_mistral import MistralSTTProvider
 
-        with patch("mistralai.Mistral") as mock_mistral:
-            mock_client = MagicMock()
-            mock_mistral.return_value = mock_client
+        mock_mistral_module = MagicMock()
+        mock_mistral_class = MagicMock()
+        mock_mistral_module.Mistral = mock_mistral_class
 
+        with patch.dict("sys.modules", {"mistralai": mock_mistral_module}):
             provider = MistralSTTProvider(STTProviderConfig(api_key="test_key"))
             assert provider.is_available() is True
-            mock_mistral.assert_called_once_with(api_key="test_key")
+            mock_mistral_class.assert_called_once_with(api_key="test_key")
 
     def test_unavailable_when_sdk_missing(self):
         """Test provider is unavailable when SDK import fails."""
