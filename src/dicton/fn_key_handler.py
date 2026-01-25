@@ -692,6 +692,8 @@ class FnKeyHandler:
         this loop will refresh the device list and update the fd set.
         """
         try:
+            import select
+
             from evdev import ecodes
 
             # Build initial list of devices to monitor

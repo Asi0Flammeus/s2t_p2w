@@ -24,7 +24,8 @@ LOGO_BASE64 = _load_logo_base64()
 _OLD_LOGO_BASE64 = "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45S//zTf/+V/+1//6zHA4PHnHKZ///F994xs3zszMiLUh0GjUgrIkUGHVEhqnc6i0Wq0sy1Z6y2U5XjqydM873z0/t7Dp+GccPnLo9Zdfdujg4Ve/+nW7n3rqtNNO/dSn/uSmm771pf/91+94xx8c2L//ve99z4++/5M3X3n15Zddum7t2uOPO+6nt9z6pje/5TWvedX69evVpwIAYdAfnn76KW9/+++8/fd/98wzz1zpLT372ef+/jt+9x3v+L2tJ24ZT8bGcMgiVaxccP5zv/iFL5cTe/KO7aR08sk73vWu/3brrbe98Y1vWDq6DBi1BOKjR5YuuuiF20866ZprrplbM/+GK15PROs3bMjyLM+yo0eXL73stSLyrj9498UvfdmvXnTR3Nz8N75xw+Lioe997/snn7zj0stes7i4+O53vfs1r3nVyTt2bNu6be/eA2+96m2XXHLJ8ccf/553v/eWW378J5/6k/e+9/2ZMSL6Z5/9889//otve9tbJ+PxiSdue/jhR6666m2vfvWrRsPJ3Jq5k07ads45Zy0vLy0eONhoNphhDA8Gw1NPOeVZ5559+eWvv+eX901PzUzGxX+95j2Liwe3bz/p6NKh5z//ec985pmXXnr59773/ec857yv/M1X/uoLX/zed7/75jdd/cjDj83Orrnp29/7w2s/cNZZz7zoohd+8pOfvOGb3/jKV//ut9/2ew8+8OB7/9v7Nm7YuLCwsLK8/M53vP32f7/jta997fOff8HGjes2btzw+BNPXnnlVS+7+OItJ2yejCcgo6JihUj379//8T+6/nOf+/O3vOXKZrN5/vnn33jjTe/7ww/+7u/+NojOOP20z//lFz/0oevedOVvhto0DtXywxitaqZ+7AaBDDs9SXIytapOxpOyLItJOTU1TUqjwbjXGxRlSVS2Ws2f//xutbj22g+sW7tehQmZLXU8LBqNnMF33Xnn4sF9jzz84Lp1a5eWlvfu2Tcajg4sHmw2mv3ewBg3gJVB1Gw0Z9fMEmmjkVuRdqczvzBHSlmWiTvGSiyRktWp7tR55z17enr27LPP/tkdd97609see+zR5eWjO3fuOvnkHSYI09RSLctGnovoW9/61kcfeez+Bx5s5E1SHQ6H41FhTJaZfHpq5i1vect3bvrO7t17iqKcjCfD4bDXW1GVbqfb6Fbkum5uOHr06MzM9HAw1Jm5o2lINlZqKEqrHXbbeyPZx9/66b8/Z6ty14sAAAAASUVORK5CYII="
 
 # HTML template with dashboard
-HTML_TEMPLATE = """<!DOCTYPE html>
+HTML_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -305,6 +306,74 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             border-color: var(--orange);
             color: var(--orange);
         }
+        .profile-chip.clickable {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .profile-chip.clickable:hover {
+            background: var(--ui);
+            border-color: var(--tx-2);
+        }
+        .profile-chip.user-defined {
+            border-style: dashed;
+        }
+        .profile-chip .delete-btn {
+            margin-left: 0.5rem;
+            color: var(--tx-3);
+            cursor: pointer;
+        }
+        .profile-chip .delete-btn:hover {
+            color: #d04040;
+        }
+        /* Profile Editor */
+        .profile-editor {
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .profile-editor .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .profile-editor .form-row > div {
+            flex: 1;
+        }
+        .profile-editor label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--tx-2);
+            margin-bottom: 0.25rem;
+        }
+        .profile-editor input,
+        .profile-editor textarea,
+        .profile-editor select {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
+            border-radius: 4px;
+            color: var(--tx);
+            font-size: 0.85rem;
+        }
+        .profile-editor textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .profile-editor .match-list {
+            font-size: 0.85rem;
+        }
+        .profile-editor .match-list input {
+            margin-bottom: 0.25rem;
+        }
+        .profile-editor .btn-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            justify-content: flex-end;
+        }
         /* Latency Test Panel */
         .test-panel {
             text-align: center;
@@ -493,7 +562,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
     <div class="container">
         <div class="header">
-            <img src="data:image/png;base64,""" + LOGO_BASE64 + """" alt="Dicton" class="logo">
+            <img src="data:image/png;base64,"""
+    + LOGO_BASE64
+    + """" alt="Dicton" class="logo">
             <p class="subtitle">Voice-to-text dictation dashboard</p>
         </div>
 
@@ -545,15 +616,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- Configuration Tab -->
         <div id="tab-config" class="tab-content">
             <div class="section">
-                <div class="section-title">API Keys</div>
+                <div class="section-title">Speech-to-Text</div>
                 <div class="form-group">
-                    <label>ElevenLabs API Key</label>
-                    <div class="input-with-status">
-                        <input type="password" id="elevenlabs_api_key" placeholder="Enter your ElevenLabs API key">
-                        <span id="elevenlabs-status" class="input-status not-set">Not Set</span>
-                    </div>
-                    <div class="hint">Required for speech-to-text. Get it from elevenlabs.io</div>
+                    <label>STT Provider</label>
+                    <select id="stt_provider">
+                        <option value="auto">Auto (tries Mistral, then ElevenLabs)</option>
+                        <option value="mistral">Mistral (~85% cheaper)</option>
+                        <option value="elevenlabs">ElevenLabs</option>
+                    </select>
+                    <div class="hint">Mistral: $0.06/hr | ElevenLabs: $0.40/hr</div>
                 </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Mistral API Key</label>
+                        <div class="input-with-status">
+                            <input type="password" id="mistral_api_key" placeholder="Mistral API key">
+                            <span id="mistral-status" class="input-status not-set">Not Set</span>
+                        </div>
+                        <div class="hint">Get it from console.mistral.ai</div>
+                    </div>
+                    <div class="form-group">
+                        <label>ElevenLabs API Key</label>
+                        <div class="input-with-status">
+                            <input type="password" id="elevenlabs_api_key" placeholder="ElevenLabs API key">
+                            <span id="elevenlabs-status" class="input-status not-set">Not Set</span>
+                        </div>
+                        <div class="hint">Get it from elevenlabs.io</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">LLM (Reformulation & Translation)</div>
                 <div class="grid-2">
                     <div class="form-group">
                         <label>Gemini API Key</label>
@@ -851,8 +945,78 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             <div class="section">
                 <div class="section-title">Available Profiles</div>
-                <div class="hint" style="margin-bottom: 1rem">Context profiles are defined in ~/.config/dicton/contexts.json</div>
+                <div class="hint" style="margin-bottom: 1rem">Click a profile to edit. User profiles are saved to ~/.config/dicton/contexts.json</div>
                 <div id="profile-list" class="profile-list"></div>
+                <button class="btn btn-secondary" onclick="showProfileEditor(null)" style="margin-top: 1rem">+ New Profile</button>
+            </div>
+
+            <div id="profile-editor-section" class="section" style="display: none;">
+                <div class="section-title" id="profile-editor-title">Edit Profile</div>
+                <div class="profile-editor">
+                    <div class="form-row">
+                        <div>
+                            <label for="profile-name">Profile Name</label>
+                            <input type="text" id="profile-name" placeholder="e.g., my_custom_profile">
+                        </div>
+                        <div>
+                            <label for="profile-priority">Priority (higher = checked first)</label>
+                            <input type="number" id="profile-priority" value="5" min="0" max="100">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div>
+                            <label for="profile-typing-speed">Typing Speed</label>
+                            <select id="profile-typing-speed">
+                                <option value="fast">Fast (0.01s)</option>
+                                <option value="normal" selected>Normal (0.02s)</option>
+                                <option value="slow">Slow (0.05s)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="profile-formatting">Formatting</label>
+                            <select id="profile-formatting">
+                                <option value="auto" selected>Auto</option>
+                                <option value="raw">Raw</option>
+                                <option value="paragraphs">Paragraphs</option>
+                                <option value="short">Short</option>
+                                <option value="preserve_whitespace">Preserve Whitespace</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="profile-preamble">LLM Preamble (context for AI)</label>
+                        <textarea id="profile-preamble" placeholder="e.g., User is writing Python code. Preserve technical terms..."></textarea>
+                    </div>
+
+                    <div class="form-row" style="margin-top: 0.75rem;">
+                        <div>
+                            <label>Window Classes (comma-separated)</label>
+                            <input type="text" id="profile-match-wm-class" placeholder="e.g., code, pycharm, sublime">
+                        </div>
+                        <div>
+                            <label>Title Contains (comma-separated)</label>
+                            <input type="text" id="profile-match-title" placeholder="e.g., compose, new message">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div>
+                            <label>File Extensions (comma-separated)</label>
+                            <input type="text" id="profile-match-ext" placeholder="e.g., .py, .js, .ts">
+                        </div>
+                        <div>
+                            <label>URL Contains (comma-separated)</label>
+                            <input type="text" id="profile-match-url" placeholder="e.g., docs., github.com">
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="hideProfileEditor()">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveProfile()">Save Profile</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -930,9 +1094,143 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             list.innerHTML = '';
             for (const name of profiles) {
                 const chip = document.createElement('span');
-                chip.className = 'profile-chip';
+                chip.className = 'profile-chip clickable';
                 chip.textContent = name;
+                chip.onclick = () => showProfileEditor(name);
                 list.appendChild(chip);
+            }
+        }
+
+        // Profile editor state
+        let editingProfileName = null;
+
+        async function showProfileEditor(profileName) {
+            editingProfileName = profileName;
+            const editorSection = document.getElementById('profile-editor-section');
+            const titleEl = document.getElementById('profile-editor-title');
+            const nameInput = document.getElementById('profile-name');
+
+            if (profileName) {
+                // Edit existing profile
+                titleEl.textContent = 'Edit Profile: ' + profileName;
+                nameInput.value = profileName;
+                nameInput.disabled = true;
+
+                try {
+                    const res = await fetch(API_BASE + '/api/context/profiles/' + encodeURIComponent(profileName));
+                    if (!res.ok) throw new Error('Failed to load profile');
+                    const profile = await res.json();
+
+                    document.getElementById('profile-priority').value = profile.priority || 0;
+                    document.getElementById('profile-typing-speed').value = profile.typing_speed || 'normal';
+                    document.getElementById('profile-formatting').value = profile.formatting || 'auto';
+                    document.getElementById('profile-preamble').value = profile.llm_preamble || '';
+
+                    const match = profile.match || {};
+                    document.getElementById('profile-match-wm-class').value = (match.wm_class || []).join(', ');
+                    document.getElementById('profile-match-title').value = (match.window_title_contains || []).join(', ');
+                    document.getElementById('profile-match-ext').value = (match.file_extension || []).join(', ');
+                    document.getElementById('profile-match-url').value = (match.url_contains || []).join(', ');
+                } catch (e) {
+                    console.error('Failed to load profile:', e);
+                    showStatus('Failed to load profile', 'error');
+                    return;
+                }
+            } else {
+                // New profile
+                titleEl.textContent = 'New Profile';
+                nameInput.value = '';
+                nameInput.disabled = false;
+                document.getElementById('profile-priority').value = 5;
+                document.getElementById('profile-typing-speed').value = 'normal';
+                document.getElementById('profile-formatting').value = 'auto';
+                document.getElementById('profile-preamble').value = '';
+                document.getElementById('profile-match-wm-class').value = '';
+                document.getElementById('profile-match-title').value = '';
+                document.getElementById('profile-match-ext').value = '';
+                document.getElementById('profile-match-url').value = '';
+            }
+
+            editorSection.style.display = 'block';
+            editorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function hideProfileEditor() {
+            document.getElementById('profile-editor-section').style.display = 'none';
+            editingProfileName = null;
+        }
+
+        function parseCommaSeparated(str) {
+            return str.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        async function saveProfile() {
+            const nameInput = document.getElementById('profile-name');
+            const profileName = editingProfileName || nameInput.value.trim();
+
+            if (!profileName) {
+                showStatus('Profile name is required', 'error');
+                return;
+            }
+
+            if (!profileName.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+                showStatus('Profile name must be alphanumeric with underscores', 'error');
+                return;
+            }
+
+            const data = {
+                priority: parseInt(document.getElementById('profile-priority').value) || 0,
+                typing_speed: document.getElementById('profile-typing-speed').value,
+                formatting: document.getElementById('profile-formatting').value,
+                llm_preamble: document.getElementById('profile-preamble').value,
+                match: {
+                    wm_class: parseCommaSeparated(document.getElementById('profile-match-wm-class').value),
+                    window_title_contains: parseCommaSeparated(document.getElementById('profile-match-title').value),
+                    file_extension: parseCommaSeparated(document.getElementById('profile-match-ext').value),
+                    url_contains: parseCommaSeparated(document.getElementById('profile-match-url').value),
+                }
+            };
+
+            try {
+                const res = await fetch(API_BASE + '/api/context/profiles/' + encodeURIComponent(profileName), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Failed to save');
+                }
+
+                showStatus('Profile saved', 'success');
+                hideProfileEditor();
+                await loadProfiles();
+            } catch (e) {
+                console.error('Failed to save profile:', e);
+                showStatus('Failed to save profile: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteProfile(profileName) {
+            if (!confirm('Delete profile "' + profileName + '"?')) return;
+
+            try {
+                const res = await fetch(API_BASE + '/api/context/profiles/' + encodeURIComponent(profileName), {
+                    method: 'DELETE'
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Failed to delete');
+                }
+
+                showStatus('Profile deleted', 'success');
+                hideProfileEditor();
+                await loadProfiles();
+            } catch (e) {
+                console.error('Failed to delete profile:', e);
+                showStatus(e.message, 'error');
             }
         }
 
@@ -1037,15 +1335,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         function populateForm(cfg) {
+            // STT provider
+            document.getElementById('stt_provider').value = cfg.stt_provider || 'auto';
+
             // API keys - show masked values (first char + dots + last 2 chars)
+            const mistralSet = cfg.mistral_api_key_set || false;
             const elevenlabsSet = cfg.elevenlabs_api_key_set || false;
             const geminiSet = cfg.gemini_api_key_set || false;
             const anthropicSet = cfg.anthropic_api_key_set || false;
 
+            document.getElementById('mistral_api_key').value = cfg.mistral_api_key_masked || '';
             document.getElementById('elevenlabs_api_key').value = cfg.elevenlabs_api_key_masked || '';
             document.getElementById('gemini_api_key').value = cfg.gemini_api_key_masked || '';
             document.getElementById('anthropic_api_key').value = cfg.anthropic_api_key_masked || '';
 
+            updateApiKeyStatus('mistral', mistralSet);
             updateApiKeyStatus('elevenlabs', elevenlabsSet);
             updateApiKeyStatus('gemini', geminiSet);
             updateApiKeyStatus('anthropic', anthropicSet);
@@ -1081,6 +1385,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         function getFormData() {
             const hotkeyBase = document.getElementById('hotkey_base').value;
             const data = {
+                stt_provider: document.getElementById('stt_provider').value,
                 llm_provider: document.getElementById('llm_provider').value,
                 theme_color: document.querySelector('.color-option.selected')?.dataset.color || 'orange',
                 visualizer_style: document.getElementById('visualizer_style').value,
@@ -1101,11 +1406,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             // Only include API keys if they were changed (not masked)
             // Masked format: X••••••••YZ (first char + dots + last 2 chars)
+            const mistral = document.getElementById('mistral_api_key').value;
             const elevenlabs = document.getElementById('elevenlabs_api_key').value;
             const gemini = document.getElementById('gemini_api_key').value;
             const anthropic = document.getElementById('anthropic_api_key').value;
 
             const isMasked = (v) => v && v.includes('••');
+            if (mistral && !isMasked(mistral)) data.mistral_api_key = mistral;
             if (elevenlabs && !isMasked(elevenlabs)) data.elevenlabs_api_key = elevenlabs;
             if (gemini && !isMasked(gemini)) data.gemini_api_key = gemini;
             if (anthropic && !isMasked(anthropic)) data.anthropic_api_key = anthropic;
@@ -1286,7 +1593,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         // Clear API key field when focused (to allow entering new value)
-        ['elevenlabs_api_key', 'gemini_api_key', 'anthropic_api_key'].forEach(id => {
+        ['mistral_api_key', 'elevenlabs_api_key', 'gemini_api_key', 'anthropic_api_key'].forEach(id => {
             document.getElementById(id).addEventListener('focus', function() {
                 if (this.value.includes('••')) {
                     this.value = '';
@@ -1552,6 +1859,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </body>
 </html>
 """
+)
 
 
 def get_env_path() -> Path:
@@ -1622,12 +1930,17 @@ def get_current_config() -> dict[str, Any]:
     env_vars = read_env_file()
 
     # Get API keys with masking
+    mistral_key = env_vars.get("MISTRAL_API_KEY", "")
     elevenlabs_key = env_vars.get("ELEVENLABS_API_KEY", "")
     gemini_key = env_vars.get("GEMINI_API_KEY", "")
     anthropic_key = env_vars.get("ANTHROPIC_API_KEY", "")
 
     return {
+        # STT settings
+        "stt_provider": env_vars.get("STT_PROVIDER", config.STT_PROVIDER),
         # API keys - masked values for display
+        "mistral_api_key_set": bool(mistral_key),
+        "mistral_api_key_masked": _mask_api_key(mistral_key),
         "elevenlabs_api_key_set": bool(elevenlabs_key),
         "elevenlabs_api_key_masked": _mask_api_key(elevenlabs_key),
         "gemini_api_key_set": bool(gemini_key),
@@ -1668,6 +1981,8 @@ def save_config(data: dict[str, Any]) -> None:
 
     # Map UI fields to env vars
     field_map = {
+        "stt_provider": "STT_PROVIDER",
+        "mistral_api_key": "MISTRAL_API_KEY",
         "elevenlabs_api_key": "ELEVENLABS_API_KEY",
         "gemini_api_key": "GEMINI_API_KEY",
         "anthropic_api_key": "ANTHROPIC_API_KEY",
@@ -1760,7 +2075,7 @@ _test_state = {
 def _background_record():
     """Background thread function to record audio."""
     import pyaudio
-    import numpy as np
+
     from .speech_recognition_engine import suppress_stderr
 
     if _test_state["recognizer"] is None:
@@ -1804,7 +2119,7 @@ def _background_record():
 def create_app():
     """Create FastAPI application."""
     try:
-        from fastapi import FastAPI
+        from fastapi import FastAPI, Request
         from fastapi.responses import HTMLResponse, JSONResponse
         from pydantic import BaseModel
     except ImportError as e:
@@ -1850,12 +2165,15 @@ def create_app():
         try:
             config_dict = data.model_dump(exclude_none=True)
             print(f"[DEBUG] Received config data: {config_dict}")
-            print(f"[DEBUG] Secondary hotkeys: basic={config_dict.get('secondary_hotkey')}, translation={config_dict.get('secondary_hotkey_translation')}, act={config_dict.get('secondary_hotkey_act_on_text')}")
+            print(
+                f"[DEBUG] Secondary hotkeys: basic={config_dict.get('secondary_hotkey')}, translation={config_dict.get('secondary_hotkey_translation')}, act={config_dict.get('secondary_hotkey_act_on_text')}"
+            )
             print(f"[DEBUG] Writing to: {get_env_path()}")
             save_config(config_dict)
             return {"status": "ok"}
         except Exception as e:
             import traceback
+
             print(f"[ERROR] Save config failed: {e}")
             traceback.print_exc()
             return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
@@ -1923,11 +2241,138 @@ def create_app():
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    @app.get("/api/context/profiles/{profile_name}")
+    async def api_get_profile(profile_name: str):
+        """Get a specific profile's full details."""
+        try:
+            from .context_profiles import get_profile_manager
+
+            manager = get_profile_manager()
+            manager.load()
+            profile = manager.get_profile(profile_name)
+
+            if not profile:
+                return JSONResponse(
+                    {"error": f"Profile '{profile_name}' not found"}, status_code=404
+                )
+
+            return {
+                "name": profile.name,
+                "match": {
+                    "wm_class": profile.match.wm_class,
+                    "window_title_contains": profile.match.window_title_contains,
+                    "file_extension": profile.match.file_extension,
+                    "widget_role": profile.match.widget_role,
+                    "url_contains": profile.match.url_contains,
+                },
+                "llm_preamble": profile.llm_preamble,
+                "typing_speed": profile.typing_speed,
+                "formatting": profile.formatting,
+                "extends": profile.extends,
+                "priority": profile.priority,
+            }
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @app.put("/api/context/profiles/{profile_name}")
+    async def api_update_profile(profile_name: str, request: Request):
+        """Update or create a profile (saved to user config)."""
+        import json
+        from pathlib import Path
+
+        try:
+            data = await request.json()
+            user_config_path = Path.home() / ".config" / "dicton" / "contexts.json"
+
+            # Load existing user config or start fresh
+            if user_config_path.exists():
+                with open(user_config_path) as f:
+                    user_config = json.load(f)
+            else:
+                user_config = {"profiles": {}, "typing_speeds": {}}
+
+            # Update/add the profile
+            user_config["profiles"][profile_name] = {
+                "match": data.get("match", {}),
+                "llm_preamble": data.get("llm_preamble", ""),
+                "typing_speed": data.get("typing_speed", "normal"),
+                "formatting": data.get("formatting", "auto"),
+                "priority": data.get("priority", 0),
+            }
+
+            if data.get("extends"):
+                user_config["profiles"][profile_name]["extends"] = data["extends"]
+
+            # Ensure config directory exists
+            user_config_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write to user config
+            with open(user_config_path, "w") as f:
+                json.dump(user_config, f, indent=2)
+
+            # Reload profiles
+            from .context_profiles import get_profile_manager
+
+            manager = get_profile_manager()
+            manager.reload()
+
+            return {"status": "ok", "profile": profile_name}
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @app.delete("/api/context/profiles/{profile_name}")
+    async def api_delete_profile(profile_name: str):
+        """Delete a user profile (cannot delete bundled defaults)."""
+        import json
+        from pathlib import Path
+
+        try:
+            if profile_name == "default":
+                return JSONResponse({"error": "Cannot delete the default profile"}, status_code=400)
+
+            user_config_path = Path.home() / ".config" / "dicton" / "contexts.json"
+
+            if not user_config_path.exists():
+                return JSONResponse(
+                    {
+                        "error": f"Profile '{profile_name}' is a bundled default and cannot be deleted"
+                    },
+                    status_code=400,
+                )
+
+            with open(user_config_path) as f:
+                user_config = json.load(f)
+
+            if profile_name not in user_config.get("profiles", {}):
+                return JSONResponse(
+                    {
+                        "error": f"Profile '{profile_name}' is a bundled default and cannot be deleted"
+                    },
+                    status_code=400,
+                )
+
+            # Remove from user config
+            del user_config["profiles"][profile_name]
+
+            with open(user_config_path, "w") as f:
+                json.dump(user_config, f, indent=2)
+
+            # Reload profiles
+            from .context_profiles import get_profile_manager
+
+            manager = get_profile_manager()
+            manager.reload()
+
+            return {"status": "ok", "deleted": profile_name}
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
     @app.post("/api/test/start")
     async def api_test_start():
         """Start recording for latency test."""
-        import time
         import threading
+        import time
+
         from .speech_recognition_engine import SpeechRecognizer
 
         # Clean up any previous test state
@@ -1953,6 +2398,7 @@ def create_app():
     async def api_test_stop():
         """Stop recording and run transcription test - mirrors exact production flow."""
         import time
+
         import numpy as np
 
         if not _test_state["recording"]:
@@ -2012,7 +2458,9 @@ def create_app():
                         text = processed
                     result["llm_provider"] = config.LLM_PROVIDER.capitalize()
                 else:
-                    result["llm_provider"] = "Disabled" if not config.ENABLE_REFORMULATION else "Not configured"
+                    result["llm_provider"] = (
+                        "Disabled" if not config.ENABLE_REFORMULATION else "Not configured"
+                    )
             except ImportError:
                 result["llm_provider"] = "Not available"
 
@@ -2020,9 +2468,7 @@ def create_app():
 
             result["text"] = text
             result["latency"]["total"] = (
-                result["latency"]["recording"]
-                + result["latency"]["stt"]
-                + result["latency"]["llm"]
+                result["latency"]["recording"] + result["latency"]["stt"] + result["latency"]["llm"]
             )
 
         except Exception as e:
@@ -2053,7 +2499,9 @@ def find_available_port(start_port: int = 6873, max_attempts: int = 10) -> int:
         except OSError:
             continue
 
-    raise RuntimeError(f"Could not find available port in range {start_port}-{start_port + max_attempts}")
+    raise RuntimeError(
+        f"Could not find available port in range {start_port}-{start_port + max_attempts}"
+    )
 
 
 def run_config_server(port: int = 6873, open_browser: bool = True) -> None:
@@ -2076,12 +2524,12 @@ def run_config_server(port: int = 6873, open_browser: bool = True) -> None:
 
     app = create_app()
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("Dicton Dashboard")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Open: http://localhost:{actual_port}")
     print("Press Ctrl+C to stop")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
 
     if open_browser:
         Timer(1.0, lambda: webbrowser.open(f"http://localhost:{actual_port}")).start()

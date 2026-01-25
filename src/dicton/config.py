@@ -124,6 +124,13 @@ class Config:
     # ElevenLabs STT model
     ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "scribe_v1")
 
+    # Mistral STT (alternative to ElevenLabs, ~85% cost savings)
+    MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+    MISTRAL_STT_MODEL = os.getenv("MISTRAL_STT_MODEL", "voxtral-mini-latest")
+
+    # STT Provider selection: "mistral", "elevenlabs", or "auto" (tries both)
+    STT_PROVIDER = os.getenv("STT_PROVIDER", "auto")
+
     # API timeout in seconds (prevents infinite hang if VPN blocks APIs)
     API_TIMEOUT = float(os.getenv("API_TIMEOUT", "30"))
 
@@ -152,8 +159,12 @@ class Config:
     # Secondary hotkeys - alternative keys that work like FN (for keyboards without KEY_WAKEUP)
     # Options: escape, f1-f12, capslock, pause, insert, home, end, pageup, pagedown, none
     SECONDARY_HOTKEY = os.getenv("SECONDARY_HOTKEY", "none").lower()  # Basic/Reformulation mode
-    SECONDARY_HOTKEY_TRANSLATION = os.getenv("SECONDARY_HOTKEY_TRANSLATION", "none").lower()  # Translation mode
-    SECONDARY_HOTKEY_ACT_ON_TEXT = os.getenv("SECONDARY_HOTKEY_ACT_ON_TEXT", "none").lower()  # Act on Text mode
+    SECONDARY_HOTKEY_TRANSLATION = os.getenv(
+        "SECONDARY_HOTKEY_TRANSLATION", "none"
+    ).lower()  # Translation mode
+    SECONDARY_HOTKEY_ACT_ON_TEXT = os.getenv(
+        "SECONDARY_HOTKEY_ACT_ON_TEXT", "none"
+    ).lower()  # Act on Text mode
 
     # Visualizer theme color (red, orange, yellow, green, cyan, blue, purple, magenta)
     THEME_COLOR = os.getenv("THEME_COLOR", "orange").lower()
@@ -197,6 +208,10 @@ class Config:
     PASTE_THRESHOLD_WORDS = int(os.getenv("PASTE_THRESHOLD_WORDS", "10"))
 
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+
+    # Desktop notifications - show notifications for recording start/stop/errors
+    # Disabled by default since the visualizer provides sufficient feedback
+    NOTIFICATIONS_ENABLED = os.getenv("NOTIFICATIONS_ENABLED", "false").lower() == "true"
 
     # Context detection - adapts LLM prompts and typing speed based on active app
     CONTEXT_ENABLED = os.getenv("CONTEXT_ENABLED", "true").lower() == "true"

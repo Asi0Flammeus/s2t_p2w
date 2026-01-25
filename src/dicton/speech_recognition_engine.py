@@ -1,4 +1,4 @@
-"""Speech recognition - ElevenLabs STT (capture then transcribe) - Cross-platform"""
+"""Speech recognition - STT provider abstraction (capture then transcribe) - Cross-platform"""
 
 import contextlib
 import io
@@ -8,6 +8,8 @@ import wave
 import numpy as np
 
 from .platform_utils import IS_LINUX, IS_WINDOWS
+from .stt_factory import get_stt_provider_with_fallback
+from .stt_provider import NullSTTProvider, STTProvider
 
 
 # Suppress audio system warnings (ALSA on Linux, etc.)
@@ -51,42 +53,38 @@ elif config.VISUALIZER_BACKEND == "vispy":
 else:
     from .visualizer import get_visualizer
 
-# Try ElevenLabs import
-HAS_ELEVENLABS = False
-try:
-    from elevenlabs.client import ElevenLabs
-
-    HAS_ELEVENLABS = True
-except ImportError as e:
-    print(f"ElevenLabs import error: {e}")
-
 
 class SpeechRecognizer:
-    """Speech recognizer: record audio, then transcribe via ElevenLabs."""
+    """Speech recognizer: record audio, then transcribe via STT provider."""
 
     def __init__(self):
-        self.use_elevenlabs = False
         self.recording = False
         self._cancelled = False  # Flag for immediate cancel (discard audio)
         self.input_device = None
-        self.client = None
+
+        # Initialize STT provider via factory (respects STT_PROVIDER config)
+        self._stt_provider: STTProvider = get_stt_provider_with_fallback()
+        self._provider_available = not isinstance(self._stt_provider, NullSTTProvider)
 
         with suppress_stderr():
             self.audio = pyaudio.PyAudio()
 
         self._find_input_device()
 
-        if HAS_ELEVENLABS and config.ELEVENLABS_API_KEY:
-            self.use_elevenlabs = True
-            self.client = ElevenLabs(
-                api_key=config.ELEVENLABS_API_KEY,
-                timeout=config.STT_TIMEOUT,
-            )
-            print(f"✓ Using ElevenLabs STT ({config.ELEVENLABS_MODEL})")
-        elif not HAS_ELEVENLABS:
-            print("⚠ ElevenLabs SDK not installed (pip install elevenlabs)")
-        elif not config.ELEVENLABS_API_KEY:
-            print("⚠ ELEVENLABS_API_KEY not set in .env")
+        # Provider status is printed by the factory (verbose=True by default)
+        if not self._provider_available:
+            print("   Set MISTRAL_API_KEY or ELEVENLABS_API_KEY in .env")
+
+    @property
+    def provider_name(self) -> str:
+        """Get the name of the active STT provider."""
+        return self._stt_provider.name if self._provider_available else "None"
+
+    # Legacy property for backwards compatibility
+    @property
+    def use_elevenlabs(self) -> bool:
+        """Check if any STT provider is available (legacy compatibility)."""
+        return self._provider_available
 
     def _find_input_device(self):
         """Find the best available input device - cross-platform."""
@@ -179,8 +177,8 @@ class SpeechRecognizer:
         (pulsing animation) instead of stopping. The caller is responsible for
         calling viz.stop() after processing is complete.
         """
-        if not self.use_elevenlabs:
-            print("⚠ ElevenLabs not available")
+        if not self._provider_available:
+            print("⚠ No STT provider available")
             return None
 
         viz = get_visualizer()
@@ -249,8 +247,8 @@ class SpeechRecognizer:
 
     def record_for_duration(self, duration_seconds: float) -> np.ndarray | None:
         """Record audio for a fixed duration (for latency testing)."""
-        if not self.use_elevenlabs:
-            print("⚠ ElevenLabs not available")
+        if not self._provider_available:
+            print("⚠ No STT provider available")
             return None
 
         stream = None
@@ -302,40 +300,47 @@ class SpeechRecognizer:
         self._cancelled = True
         self.recording = False
 
+    def _audio_to_wav(self, audio: np.ndarray) -> bytes:
+        """Convert numpy float32 audio array to WAV bytes.
+
+        Args:
+            audio: Float32 audio array normalized to [-1.0, 1.0].
+
+        Returns:
+            WAV file as bytes.
+        """
+        # Convert float32 audio to int16 bytes
+        audio_int16 = (audio * 32767).astype(np.int16)
+
+        # Create WAV in memory
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)  # 16-bit
+            wav_file.setframerate(config.SAMPLE_RATE)
+            wav_file.writeframes(audio_int16.tobytes())
+
+        wav_buffer.seek(0)
+        return wav_buffer.read()
+
     def transcribe(self, audio: np.ndarray) -> str | None:
-        """Transcribe recorded audio using ElevenLabs STT."""
+        """Transcribe recorded audio using the configured STT provider."""
         if audio is None or len(audio) == 0:
             return None
 
-        if not self.use_elevenlabs or not self.client:
-            print("⚠ ElevenLabs not available")
+        if not self._provider_available:
+            print("⚠ No STT provider available")
             return None
 
         try:
-            # Convert float32 audio to int16 bytes
-            audio_int16 = (audio * 32767).astype(np.int16)
+            # Convert numpy array to WAV bytes
+            wav_bytes = self._audio_to_wav(audio)
 
-            # Create WAV in memory
-            wav_buffer = io.BytesIO()
-            with wave.open(wav_buffer, "wb") as wav_file:
-                wav_file.setnchannels(1)
-                wav_file.setsampwidth(2)  # 16-bit
-                wav_file.setframerate(config.SAMPLE_RATE)
-                wav_file.writeframes(audio_int16.tobytes())
+            # Use provider abstraction
+            result = self._stt_provider.transcribe(wav_bytes)
 
-            wav_buffer.seek(0)
-
-            # Call ElevenLabs STT (language_code=None for auto-detect)
-            transcription = self.client.speech_to_text.convert(
-                file=wav_buffer,
-                model_id=config.ELEVENLABS_MODEL,
-            )
-
-            # Extract text from response
-            text = transcription.text if hasattr(transcription, "text") else str(transcription)
-
-            if text:
-                return self._filter(text)
+            if result and result.text:
+                return self._filter(result.text)
             return None
 
         except Exception as e:
