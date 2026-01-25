@@ -2,11 +2,18 @@
 
 import subprocess
 
+from .config import Config
 from .platform_utils import IS_LINUX, IS_MACOS, IS_WINDOWS
 
 
 def notify(title: str, message: str, timeout: int = 2):
-    """Show desktop notification - cross-platform"""
+    """Show desktop notification - cross-platform.
+
+    Respects NOTIFICATIONS_ENABLED config setting (disabled by default).
+    """
+    if not Config.NOTIFICATIONS_ENABLED:
+        return
+
     try:
         if IS_LINUX:
             _notify_linux(title, message, timeout)

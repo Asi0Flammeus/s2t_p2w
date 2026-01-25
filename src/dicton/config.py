@@ -209,6 +209,10 @@ class Config:
 
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
+    # Desktop notifications - show notifications for recording start/stop/errors
+    # Disabled by default since the visualizer provides sufficient feedback
+    NOTIFICATIONS_ENABLED = os.getenv("NOTIFICATIONS_ENABLED", "false").lower() == "true"
+
     # Context detection - adapts LLM prompts and typing speed based on active app
     CONTEXT_ENABLED = os.getenv("CONTEXT_ENABLED", "true").lower() == "true"
 
